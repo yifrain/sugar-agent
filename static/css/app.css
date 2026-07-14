@@ -1,0 +1,48 @@
+/* Sugar Agent Admin Styles */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
+}
+
+/* Smooth transitions for Alpine.js */
+[x-cloak] {
+    display: none !important;
+}
+
+/* Chart container */
+#bgChart {
+    width: 100% !important;
+    max-height: 200px;
+}
+
+/* Prose-like textarea for prompts */
+textarea {
+    font-family: 'SF Mono', 'Monaco', 'Menlo', 'Courier New', monospace;
+    line-height: 1.6;
+}
+
+/* Animated gradient for login */
+.bg-gradient-to-br {
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease infinite;
+}
+
+@keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}

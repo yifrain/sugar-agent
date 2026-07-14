@@ -216,3 +216,36 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ===== Sugar Agent =====
+# Runtime data (database, logs, uploaded files)
+data/*
+!data/**/.gitkeep
+
+# Environment secrets (.env.example is committed as template)
+.env
+.env.local
+.env.production
+
+# Prompt backups
+*.bak
+prompts/*.bak
+src/sugar_agent/prompts/*.bak
+src/sugar_agent/prompts/templates/*.bak
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

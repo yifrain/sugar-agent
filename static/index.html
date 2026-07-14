@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sugar Agent - 管理后台</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/admin/css/app.css">
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="app">
+    <!-- Login Screen -->
+    <div x-show="!authenticated" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
+        <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="text-5xl mb-4">🍬🤖</div>
+                <h1 class="text-2xl font-bold text-gray-800">Sugar Agent</h1>
+                <p class="text-gray-500 mt-2">管理后台登录</p>
+            </div>
+            <form @submit.prevent="login">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                    <input type="password" x-model="password" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-transparent" placeholder="请输入管理密码">
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-pink-400 to-purple-400 text-white py-3 rounded-lg font-medium hover:opacity-90 transition">
+                    登录
+                </button>
+                <p x-show="loginError" class="text-red-500 text-sm mt-3 text-center" x-text="loginError"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div x-show="authenticated" class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">🍬</span>
+                    <div>
+                        <h2 class="font-bold text-gray-800">Sugar Agent</h2>
+                        <p class="text-xs text-gray-400">管理后台</p>
+                    </div>
+                </div>
+            </div>
+            <nav class="flex-1 p-4 space-y-1">
+                <template x-for="item in navItems" :key="item.id">
+                    <a @click="navigate(item.id)"
+                       :class="{'bg-pink-50 text-pink-600': currentPage === item.id, 'text-gray-600 hover:bg-gray-50': currentPage !== item.id}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition text-sm font-medium">
+                        <span x-text="item.icon"></span>
+                        <span x-text="item.label"></span>
+                    </a>
+                </template>
+            </nav>
+            <div class="p-4 border-t border-gray-100">
+                <div class="text-xs text-gray-400">
+                    <span x-text="statusText"></span>
+                </div>
+                <button @click="logout" class="mt-2 text-xs text-gray-400 hover:text-red-500 transition">退出登录</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-8">
+            <!-- Dashboard -->
+            <div x-show="currentPage === 'dashboard'">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">📊 仪表盘</h1>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <template x-for="stat in dashboardStats" :key="stat.label">
+                        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                            <p class="text-sm text-gray-500" x-text="stat.label"></p>
+                            <p class="text-2xl font-bold text-gray-800 mt-1" x-text="stat.value"></p>
+                        </div>
+                    </template>
+                </div>
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                    <h2 class="font-semibold text-gray-700 mb-4">快速操作</h2>
+                    <div class="flex gap-3">
+                        <button @click="navigate('conversations')" class="px-4 py-2 bg-pink-50 text-pink-600 rounded-lg text-sm hover:bg-pink-100 transition">查看对话</button>
+                        <button @click="navigate('memories')" class="px-4 py-2 bg-purple-50 text-purple-600 rounded-lg text-sm hover:bg-purple-100 transition">管理记忆</button>
+                        <button @click="navigate('prompts')" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 transition">编辑提示词</button>
+                        <button @click="navigate('bloodsugar')" class="px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm hover:bg-green-100 transition">血糖数据</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conversations -->
+            <div x-show="currentPage === 'conversations'">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">💬 对话记录</h1>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b flex gap-3">
+                        <input type="text" x-model="convSearch" @keyup.enter="loadConversations()" placeholder="搜索对话内容..." class="flex-1 px-4 py-2 border rounded-lg text-sm">
+                        <input type="date" x-model="convDate" @change="loadConversations()" class="px-4 py-2 border rounded-lg text-sm">
+                        <button @click="loadConversations()" class="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600">搜索</button>
+                    </div>
+                    <div class="divide-y max-h-[60vh] overflow-y-auto">
+                        <template x-for="msg in conversations" :key="msg.id">
+                            <div class="p-4 hover:bg-gray-50">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span :class="msg.role === 'user' ? 'bg-blue-100 text-blue-600' : msg.is_proactive ? 'bg-purple-100 text-purple-600' : 'bg-pink-100 text-pink-600'"
+                                          class="px-2 py-0.5 rounded text-xs font-medium" x-text="msg.role === 'user' ? msg.from_name || '用户' : 'Agent'"></span>
+                                    <span class="text-xs text-gray-400" x-text="formatTime(msg.created_at)"></span>
+                                </div>
+                                <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="msg.content"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <!-- Quick Send -->
+                <div class="mt-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">手动发送消息 (测试)</h3>
+                    <div class="flex gap-3">
+                        <input type="text" x-model="quickMessage" @keyup.enter="sendQuickMessage()" placeholder="输入消息内容..." class="flex-1 px-4 py-2 border rounded-lg text-sm">
+                        <button @click="sendQuickMessage()" class="px-6 py-2 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600">发送</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memories -->
+            <div x-show="currentPage === 'memories'">
+                <div class="flex items-center justify-between mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800">🧠 记忆管理</h1>
+                    <button @click="showMemoryForm = true" class="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600">+ 添加记忆</button>
+                </div>
+                <!-- Filter -->
+                <div class="flex gap-3 mb-4">
+                    <select x-model="memoryCategory" @change="loadMemories()" class="px-4 py-2 border rounded-lg text-sm">
+                        <option value="">全部分类</option>
+                        <option value="love">恋爱</option>
+                        <option value="health">健康</option>
+                        <option value="preference">喜好</option>
+                        <option value="habit">习惯</option>
+                        <option value="fact">事实</option>
+                        <option value="event">事件</option>
+                    </select>
+                    <input type="text" x-model="memorySearch" @keyup.enter="loadMemories()" placeholder="搜索记忆..." class="px-4 py-2 border rounded-lg text-sm flex-1">
+                </div>
+                <!-- Memory Form -->
+                <div x-show="showMemoryForm" class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-4">
+                    <h3 class="font-semibold text-gray-700 mb-3">新记忆</h3>
+                    <textarea x-model="newMemory.content" rows="2" placeholder="记忆内容..." class="w-full px-4 py-2 border rounded-lg text-sm mb-3"></textarea>
+                    <div class="flex gap-3 mb-3">
+                        <select x-model="newMemory.category" class="px-4 py-2 border rounded-lg text-sm">
+                            <option value="fact">事实</option><option value="love">恋爱</option><option value="health">健康</option>
+                            <option value="preference">喜好</option><option value="habit">习惯</option><option value="event">事件</option>
+                        </select>
+                        <select x-model="newMemory.importance" class="px-4 py-2 border rounded-lg text-sm">
+                            <option :value="1">⭐ 一般</option><option :value="2">⭐⭐</option><option :value="3">⭐⭐⭐</option>
+                            <option :value="4">⭐⭐⭐⭐</option><option :value="5">⭐⭐⭐⭐⭐ 重要</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button @click="createMemory()" class="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm">保存</button>
+                        <button @click="showMemoryForm = false" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm">取消</button>
+                    </div>
+                </div>
+                <!-- Memory List -->
+                <div class="space-y-2">
+                    <template x-for="mem in memories" :key="mem.id">
+                        <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-100 flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600" x-text="mem.category"></span>
+                                    <span x-show="mem.is_pinned" class="text-xs">📌</span>
+                                    <span class="text-xs text-yellow-500" x-text="'⭐'.repeat(mem.importance || 1)"></span>
+                                </div>
+                                <p class="text-sm text-gray-700" x-text="mem.content"></p>
+                            </div>
+                            <div class="flex gap-1 ml-4">
+                                <button @click="togglePin(mem)" class="text-xs px-2 py-1 rounded hover:bg-gray-100" :title="mem.is_pinned ? '取消钉选' : '钉选'">
+                                    <span x-text="mem.is_pinned ? '📌' : '📍'"></span>
+                                </button>
+                                <button @click="deleteMemory(mem.id)" class="text-xs px-2 py-1 rounded hover:bg-red-50 text-red-400">🗑️</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Prompts Editor -->
+            <div x-show="currentPage === 'prompts'">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">✏️ 提示词编辑器</h1>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b flex items-center justify-between">
+                        <select x-model="selectedPrompt" @change="loadPrompt()" class="px-4 py-2 border rounded-lg text-sm">
+                            <template x-for="name in promptFiles" :key="name">
+                                <option :value="name" x-text="name"></option>
+                            </template>
+                        </select>
+                        <button @click="savePrompt()" class="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600">💾 保存</button>
+                    </div>
+                    <textarea x-model="promptContent" rows="25"
+                              class="w-full p-6 font-mono text-sm border-0 focus:ring-0 resize-none"
+                              placeholder="选择提示词文件开始编辑..."></textarea>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">修改会自动备份为 .bak 文件。修改后立即生效。</p>
+            </div>
+
+            <!-- Blood Sugar Data -->
+            <div x-show="currentPage === 'bloodsugar'">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">📈 血糖数据</h1>
+                <!-- Chart -->
+                <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
+                    <canvas id="bgChart" height="100"></canvas>
+                </div>
+                <!-- Stats -->
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6" x-show="bgStats">
+                    <div class="bg-white rounded-lg p-4 shadow-sm border text-center">
+                        <p class="text-xs text-gray-500">平均血糖</p>
+                        <p class="text-xl font-bold text-gray-800" x-text="bgStats.avg_value + ' mmol/L'"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow-sm border text-center">
+                        <p class="text-xs text-gray-500">达标率</p>
+                        <p class="text-xl font-bold" :class="bgStats.time_in_range_pct >= 70 ? 'text-green-500' : 'text-yellow-500'" x-text="bgStats.time_in_range_pct + '%'"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow-sm border text-center">
+                        <p class="text-xs text-gray-500">低血糖</p>
+                        <p class="text-xl font-bold" :class="bgStats.time_low_pct > 5 ? 'text-red-500' : 'text-gray-800'" x-text="bgStats.time_low_pct + '%'"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow-sm border text-center">
+                        <p class="text-xs text-gray-500">高血糖</p>
+                        <p class="text-xl font-bold" :class="bgStats.time_high_pct > 20 ? 'text-orange-500' : 'text-gray-800'" x-text="bgStats.time_high_pct + '%'"></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-4 shadow-sm border text-center">
+                        <p class="text-xs text-gray-500">总记录</p>
+                        <p class="text-xl font-bold text-gray-800" x-text="bgStats.total_readings"></p>
+                    </div>
+                </div>
+                <!-- Add Reading -->
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-3">手动添加血糖记录</h3>
+                    <div class="flex gap-3">
+                        <input type="number" x-model="newBg.value_mmol" step="0.1" placeholder="血糖值 (mmol/L)" class="w-40 px-4 py-2 border rounded-lg text-sm">
+                        <select x-model="newBg.context" class="px-4 py-2 border rounded-lg text-sm">
+                            <option value="">无背景</option>
+                            <option value="fasting">空腹</option><option value="before_meal">餐前</option>
+                            <option value="after_meal">餐后</option><option value="bedtime">睡前</option>
+                        </select>
+                        <input type="text" x-model="newBg.notes" placeholder="备注" class="flex-1 px-4 py-2 border rounded-lg text-sm">
+                        <button @click="addBgReading()" class="px-6 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">添加</button>
+                    </div>
+                </div>
+                <!-- Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 text-left">
+                            <tr>
+                                <th class="px-4 py-3 text-gray-500 font-medium">时间</th>
+                                <th class="px-4 py-3 text-gray-500 font-medium">血糖值</th>
+                                <th class="px-4 py-3 text-gray-500 font-medium">背景</th>
+                                <th class="px-4 py-3 text-gray-500 font-medium">备注</th>
+                                <th class="px-4 py-3 text-gray-500 font-medium">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="bg in bgReadings" :key="bg.id">
+                                <tr class="border-t hover:bg-gray-50">
+                                    <td class="px-4 py-3 text-gray-600" x-text="formatTime(bg.recorded_at)"></td>
+                                    <td class="px-4 py-3">
+                                        <span :class="getBgColor(bg.value_mmol)" class="font-medium" x-text="bg.value_mmol + ' mmol/L'"></span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-500" x-text="bg.context || '-'"></td>
+                                    <td class="px-4 py-3 text-gray-500" x-text="bg.notes || '-'"></td>
+                                    <td class="px-4 py-3">
+                                        <button @click="deleteBgReading(bg.id)" class="text-red-400 hover:text-red-600 text-xs">删除</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Scheduler -->
+            <div x-show="currentPage === 'scheduler'">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">⏰ 定时任务</h1>
+                <div class="space-y-3">
+                    <template x-for="task in schedulerTasks" :key="task.id">
+                        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
+                            <div>
+                                <h3 class="font-medium text-gray-800" x-text="task.name"></h3>
+                                <p class="text-xs text-gray-400 mt-1">下次触发: <span x-text="task.next_run ? formatTime(task.next_run) : '未调度'"></span></p>
+                            </div>
+                            <button @click="triggerTask(task.id)" class="px-4 py-2 bg-pink-50 text-pink-600 rounded-lg text-sm hover:bg-pink-100 transition">▶ 手动触发</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div x-show="currentPage === 'settings'">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">⚙️ 设置</h1>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <pre class="p-6 text-xs text-gray-600 overflow-x-auto" x-text="JSON.stringify(settings, null, 2)"></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/admin/js/api.js"></script>
+    <script src="/admin/js/app.js"></script>
+</body>
+</html>

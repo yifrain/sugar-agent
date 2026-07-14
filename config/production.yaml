@@ -1,0 +1,18 @@
+# Sugar Agent 生产环境配置覆盖
+# 启动时设置: SUGAR_ENV=production
+
+app:
+  env: production
+  log_level: INFO
+
+wechat_bridge:
+  type: http
+  poll_interval: 5
+
+llm:
+  temperature: 0.7
+  timeout: 20
+
+server:
+  host: "127.0.0.1"  # 通过 Nginx 反向代理
+  port: 8080

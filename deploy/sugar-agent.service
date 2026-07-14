@@ -1,0 +1,29 @@
+[Unit]
+Description=Sugar Agent - WeChat AI Health Assistant
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/sugar-agent
+ExecStart=/opt/sugar-agent/.venv/bin/python -m sugar_agent
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/sugar-agent/data/logs/service.log
+StandardError=append:/opt/sugar-agent/data/logs/service-error.log
+
+# Environment
+Environment="SUGAR_ENV=production"
+EnvironmentFile=/opt/sugar-agent/.env
+
+# Security
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/sugar-agent/data
+ReadOnlyPaths=/opt/sugar-agent/src /opt/sugar-agent/config /opt/sugar-agent/prompts
+
+[Install]
+WantedBy=multi-user.target

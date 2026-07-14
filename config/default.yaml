@@ -1,0 +1,83 @@
+# Sugar Agent 默认配置
+# 生产环境请在 config/production.yaml 中覆盖
+
+app:
+  name: sugar-agent
+  env: development
+  log_level: DEBUG
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  webhook_path: /api/v1/webhook/message
+
+wechat_bridge:
+  type: mock  # http | mock
+  base_url: http://localhost:9001
+  api_key: ""
+  target_user_id: "test_user_001"
+  target_user_name: "宝宝"
+  poll_interval: 3  # 轮询间隔（秒）
+  webhook:
+    secret_token: ""
+
+llm:
+  provider: deepseek
+  model: deepseek/deepseek-chat
+  temperature: 0.8
+  max_tokens: 1024
+  timeout: 30
+  fallback:
+    provider: qwen
+    model: qwen/qwen-turbo
+    temperature: 0.8
+    max_tokens: 1024
+  tool_choice: auto
+
+weather:
+  provider: seniverse  # seniverse | openweathermap
+  api_key: ""
+  location: "北京"
+  location_id: ""
+  units: metric
+
+memory:
+  backend: file  # file | hybrid
+  dir: data/memories
+  max_context_memories: 10
+  auto_extract: true
+
+health:
+  bg_unit: mmol/L
+  low_threshold: 3.9
+  high_threshold: 10.0
+  urgent_low: 3.0
+  urgent_high: 16.0
+  target_low: 3.9
+  target_high: 7.0
+
+schedule:
+  timezone: Asia/Shanghai
+  tasks:
+    weather_reminder:
+      enabled: true
+      cron_hour: 7
+      cron_minute: 30
+    afternoon_checkin:
+      enabled: true
+      cron_hour: 15
+      cron_minute: 0
+    evening_summary:
+      enabled: true
+      cron_hour: 21
+      cron_minute: 0
+    weekly_health:
+      enabled: true
+      cron_day: 0  # Sunday
+      cron_hour: 10
+      cron_minute: 0
+
+admin:
+  username: admin
+  password: ""  # 通过环境变量 ADMIN_PASSWORD 设置
+  enabled: true
