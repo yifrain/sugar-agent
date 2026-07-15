@@ -116,7 +116,7 @@ LLM_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_weather",
-            "description": "查询天气预报。当用户问天气相关问题时，或需要提醒用户天气变化时调用。",
+            "description": "查询天气预报。当用户问天气时调用。可以指定城市名或区县名，如'北京'、'昌平'、'上海'。不指定则查询默认城市。",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -126,7 +126,11 @@ LLM_TOOLS = [
                         "default": 1,
                         "minimum": 1,
                         "maximum": 7,
-                    }
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "城市或区县名，如'北京'、'昌平'、'海淀'、'沙河'",
+                    },
                 },
                 "required": [],
             },

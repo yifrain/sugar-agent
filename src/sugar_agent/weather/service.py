@@ -42,24 +42,23 @@ class WeatherService:
             self._client = httpx.AsyncClient(timeout=httpx.Timeout(10))
         return self._client
 
-    async def get_forecast(self, days: int = 3) -> list[WeatherForecast]:
-        """Get weather forecast for the configured location.
+    async def get_forecast(self, days: int = 3, location: str = "") -> list[WeatherForecast]:
+        """获取天气预报。
 
         Args:
-            days: Number of days (1-7)
-
-        Returns:
-            List of WeatherForecast objects
+            days: 天数 (1-7)
+            location: 城市名，如"北京""上海""昌平"。为空则用配置的默认值
         """
+        loc = location or self.location
         if not self.api_key:
             logger.warning("No weather API key configured")
             return []
 
         try:
             if self.provider == "seniverse":
-                return await self._seniverse_forecast(days)
+                return await self._seniverse_forecast(days, loc)
             elif self.provider == "openweathermap":
-                return await self._owm_forecast(days)
+                return await self._owm_forecast(days, loc)
             else:
                 logger.warning(f"Unknown weather provider: {self.provider}")
                 return []
@@ -67,17 +66,15 @@ class WeatherService:
             logger.error(f"Weather API error: {e}")
             return []
 
-    async def _seniverse_forecast(self, days: int = 3) -> list[WeatherForecast]:
-        """Fetch forecast from Seniverse (心知天气).
-
-        API docs: https://docs.seniverse.com/
-        """
+    async def _seniverse_forecast(self, days: int = 3, location: str = "") -> list[WeatherForecast]:
+        """心知天气 API。location 支持中文名(北京)、拼音(beijing)、ID。"""
         client = await self._get_client()
+        loc = location or self.location
         response = await client.get(
             "https://api.seniverse.com/v3/weather/daily.json",
             params={
                 "key": self.api_key,
-                "location": self.location,
+                "location": loc,
                 "language": "zh-Hans",
                 "unit": "c",
                 "start": 0,
@@ -107,17 +104,14 @@ class WeatherService:
 
         return forecasts
 
-    async def _owm_forecast(self, days: int = 3) -> list[WeatherForecast]:
-        """Fetch forecast from OpenWeatherMap.
-
-        API docs: https://openweathermap.org/api/one-call-api
-        """
+    async def _owm_forecast(self, days: int = 3, location: str = "") -> list[WeatherForecast]:
+        """OpenWeatherMap API。"""
         client = await self._get_client()
+        loc = location or self.location
 
-        # First geocode the location to get coordinates
         geo_response = await client.get(
             "https://api.openweathermap.org/geo/1.0/direct",
-            params={"q": self.location, "limit": 1, "appid": self.api_key},
+            params={"q": loc, "limit": 1, "appid": self.api_key},
         )
         geo_response.raise_for_status()
         geo_data = geo_response.json()

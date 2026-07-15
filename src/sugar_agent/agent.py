@@ -294,12 +294,26 @@ class Agent:
         return {"query": query, "results": results, "count": len(results)}
 
     async def _tool_get_weather(self, args: dict) -> dict:
-        """Get weather forecast."""
+        """Get weather forecast for optional location."""
         days = args.get("days", 1)
+        location = args.get("location", "")
         if self.weather:
-            forecast = await self.weather.get_forecast(days)
-            return forecast if isinstance(forecast, dict) else {"data": str(forecast)}
-        return {"error": "Weather service not available"}
+            forecasts = await self.weather.get_forecast(days, location)
+            if not forecasts:
+                return {"error": "无法获取天气数据"}
+            # 转成 LLM 友好的格式
+            result = []
+            for f in forecasts:
+                result.append({
+                    "日期": f.date,
+                    "天气": f.condition,
+                    "高温": f"{f.temperature_high}°C",
+                    "低温": f"{f.temperature_low}°C",
+                    "降雨概率": f"{f.rain_probability}%",
+                    "风力": f"{f.wind_speed}级",
+                })
+            return {"location": location or self.weather.location, "forecast": result}
+        return {"error": "天气服务未配置"}
 
     async def _tool_set_reminder(self, args: dict) -> dict:
         """Set a reminder (placeholder - will be implemented with scheduler)."""

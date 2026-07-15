@@ -47,7 +47,7 @@ llm:
 weather:
   provider: seniverse  # seniverse | openweathermap
   api_key: ""
-  location: "北京"
+  location: "北京昌平"     # 默认位置，LLM 可通过工具参数覆盖
   location_id: ""
   units: metric
 
