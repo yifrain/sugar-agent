@@ -503,17 +503,20 @@ async def get_blood_glucose_stats(request: Request, days: int = 30, _=Depends(ve
 
 @router.get("/scheduler")
 async def get_scheduler(request: Request, _=Depends(verify_admin)):
-    """Get scheduler tasks status."""
+    """获取定时任务列表（含描述、状态、历史）。"""
     scheduler = request.app.state.scheduler
     if not scheduler:
-        return {"tasks": []}
+        return {"tasks": [], "history": []}
 
-    return {"tasks": scheduler.get_jobs()}
+    return {
+        "tasks": scheduler.get_tasks(),
+        "history": scheduler.get_history(limit=10),
+    }
 
 
 @router.post("/scheduler/{task_id}/trigger")
 async def trigger_task(task_id: str, request: Request, _=Depends(verify_admin)):
-    """Manually trigger a scheduled task."""
+    """手动触发任务——生成预览消息，不会真的通过微信发送。"""
     scheduler = request.app.state.scheduler
     if not scheduler:
         raise HTTPException(status_code=503, detail="Scheduler not available")
@@ -531,12 +534,20 @@ async def update_task(
     cron_minute: Optional[int] = None,
     _=Depends(verify_admin),
 ):
-    """Update a scheduled task."""
+    """更新定时任务配置。"""
     scheduler = request.app.state.scheduler
     if not scheduler:
         raise HTTPException(status_code=503, detail="Scheduler not available")
 
-    result = await scheduler.update_task(task_id, enabled, cron_hour, cron_minute)
+    kwargs = {}
+    if enabled is not None:
+        kwargs["enabled"] = enabled
+    if cron_hour is not None:
+        kwargs["cron_hour"] = cron_hour
+    if cron_minute is not None:
+        kwargs["cron_minute"] = cron_minute
+
+    result = await scheduler.update_task(task_id, **kwargs)
     return result
 
 

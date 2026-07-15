@@ -341,17 +341,77 @@
 
             <!-- Scheduler -->
             <div x-show="currentPage === 'scheduler'">
-                <h1 class="text-2xl font-bold text-gray-800 mb-6">⏰ 定时任务</h1>
-                <div class="space-y-3">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">⏰ 定时任务</h1>
+                <p class="text-sm text-gray-400 mb-6">管理 agent 主动推送消息的定时任务。手动触发会生成预览但不会真发给女朋友。</p>
+
+                <!-- Task Cards -->
+                <div class="grid gap-4 mb-8">
                     <template x-for="task in schedulerTasks" :key="task.id">
-                        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div>
-                                <h3 class="font-medium text-gray-800" x-text="task.name"></h3>
-                                <p class="text-xs text-gray-400 mt-1">下次触发: <span x-text="task.next_run ? formatTime(task.next_run) : '未调度'"></span></p>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <!-- Card Header -->
+                            <div class="p-5 flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="text-xl" x-text="task.icon"></span>
+                                        <h3 class="font-semibold text-gray-800" x-text="task.name"></h3>
+                                        <span :class="task.enabled ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'"
+                                              class="px-2 py-0.5 rounded text-xs font-medium"
+                                              x-text="task.enabled ? '启用' : '暂停'"></span>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mb-3" x-text="task.description"></p>
+                                    <div class="flex items-center gap-4 text-xs text-gray-400">
+                                        <span>⏱ <span x-text="task.schedule_text"></span></span>
+                                        <span x-show="task.next_run">▶ 下次: <span x-text="formatTime(task.next_run)"></span></span>
+                                        <span x-show="task.run_count > 0">📝 已执行 <span x-text="task.run_count"></span> 次</span>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 ml-4">
+                                    <button @click="toggleTask(task)" class="px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                                            :class="task.enabled ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-green-50 text-green-600 hover:bg-green-100'"
+                                            x-text="task.enabled ? '暂停' : '启用'"></button>
+                                </div>
                             </div>
-                            <button @click="triggerTask(task.id)" class="px-4 py-2 bg-pink-50 text-pink-600 rounded-lg text-sm hover:bg-pink-100 transition">▶ 手动触发</button>
+
+                            <!-- Quick config row -->
+                            <div class="px-5 pb-3 flex items-center gap-3">
+                                <span class="text-xs text-gray-400">时间</span>
+                                <input type="number" :value="task.cron_hour" min="0" max="23"
+                                       @change="updateTaskTime(task.id, 'hour', $event.target.value)"
+                                       class="w-14 px-2 py-1 border rounded text-xs text-center">
+                                <span class="text-xs text-gray-400">:</span>
+                                <input type="number" :value="task.cron_minute" min="0" max="59"
+                                       @change="updateTaskTime(task.id, 'minute', $event.target.value)"
+                                       class="w-14 px-2 py-1 border rounded text-xs text-center">
+                                <span class="text-xs text-gray-400">(北京时间)</span>
+                                <button @click="triggerTask(task.id)" class="ml-auto px-4 py-1.5 bg-pink-50 text-pink-600 rounded-lg text-xs font-medium hover:bg-pink-100 transition">
+                                    ▶️ 测试预览
+                                </button>
+                            </div>
+
+                            <!-- Preview result (shown after trigger) -->
+                            <div x-show="task._preview" class="px-5 pb-4">
+                                <div class="bg-pink-50 border border-pink-100 rounded-lg p-3">
+                                    <p class="text-xs text-pink-400 mb-1">🤖 预览消息（不会真的发送）：</p>
+                                    <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="task._preview"></p>
+                                </div>
+                            </div>
                         </div>
                     </template>
+                </div>
+
+                <!-- History -->
+                <div x-show="schedulerHistory.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <h3 class="font-medium text-gray-700 mb-3">📋 执行历史</h3>
+                    <div class="space-y-2">
+                        <template x-for="h in schedulerHistory" :key="h.created_at">
+                            <div class="flex items-center gap-3 text-sm">
+                                <span x-text="h.task_name" class="text-gray-500"></span>
+                                <span class="text-gray-300">·</span>
+                                <span class="text-gray-400 text-xs" x-text="formatTime(h.created_at)"></span>
+                                <span x-show="h.status === 'success'" class="text-green-500 text-xs">✅</span>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
 
@@ -365,7 +425,7 @@
         </main>
     </div>
 
-    <script src="/admin/js/api.js?v=2"></script>
-    <script src="/admin/js/app.js?v=2"></script>
+    <script src="/admin/js/api.js?v=3"></script>
+    <script src="/admin/js/app.js?v=3"></script>
 </body>
 </html>

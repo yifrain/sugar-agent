@@ -68,6 +68,7 @@ document.addEventListener('alpine:init', () => {
 
         // === Scheduler ===
         schedulerTasks: [],
+        schedulerHistory: [],
 
         // === Settings ===
         settings: {},
@@ -407,7 +408,12 @@ document.addEventListener('alpine:init', () => {
         async loadScheduler() {
             try {
                 const data = await api.getSchedulerTasks();
-                this.schedulerTasks = data.tasks || [];
+                const oldTasks = this.schedulerTasks || [];
+                this.schedulerTasks = (data.tasks || []).map(t => {
+                    const old = oldTasks.find(o => o.id === t.id);
+                    return { ...t, _preview: old?._preview || '' };
+                });
+                this.schedulerHistory = data.history || [];
             } catch (e) {
                 console.error('Scheduler load failed:', e);
             }
@@ -415,10 +421,37 @@ document.addEventListener('alpine:init', () => {
 
         async triggerTask(taskId) {
             try {
-                await api.triggerTask(taskId);
-                this.showToast(`任务已触发 ✅`);
+                const result = await api.triggerTask(taskId);
+                const task = this.schedulerTasks.find(t => t.id === taskId);
+                if (task) {
+                    task._preview = result.message || '(未生成消息)';
+                }
+                this.showToast('预览已生成 ✅');
             } catch (e) {
                 this.showToast('触发失败: ' + e.message, 'error');
+            }
+        },
+
+        async updateTaskTime(taskId, field, value) {
+            const v = parseInt(value);
+            if (isNaN(v)) return;
+            try {
+                const body = field === 'hour' ? { cron_hour: v } : { cron_minute: v };
+                await api.updateSchedulerTask(taskId, body);
+                this.showToast('时间已更新 ✅');
+                setTimeout(() => this.loadScheduler(), 500);
+            } catch (e) {
+                this.showToast('更新失败: ' + e.message, 'error');
+            }
+        },
+
+        async toggleTask(task) {
+            try {
+                await api.updateSchedulerTask(task.id, { enabled: !task.enabled });
+                this.showToast(task.enabled ? '已暂停' : '已启用');
+                setTimeout(() => this.loadScheduler(), 500);
+            } catch (e) {
+                this.showToast('操作失败: ' + e.message, 'error');
             }
         },
 

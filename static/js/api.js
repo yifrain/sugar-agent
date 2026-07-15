@@ -119,6 +119,10 @@ const api = {
         return this.request('POST', `/scheduler/${taskId}/trigger`);
     },
 
+    async updateSchedulerTask(taskId, body) {
+        return this.request('PUT', `/scheduler/${taskId}`, body);
+    },
+
     // Settings
     async getSettings() {
         return this.request('GET', '/settings');
