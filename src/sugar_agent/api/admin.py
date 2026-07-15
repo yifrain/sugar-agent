@@ -136,7 +136,7 @@ async def get_dashboard(request: Request, _=Depends(verify_admin)):
     # Active scheduler tasks
     scheduler = request.app.state.scheduler
     if scheduler:
-        stats.active_tasks = len(scheduler.get_jobs())
+        stats.active_tasks = len(scheduler.get_tasks())
 
     # LLM tokens
     agent = request.app.state.agent
