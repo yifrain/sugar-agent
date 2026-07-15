@@ -294,14 +294,22 @@ class Agent:
         return {"query": query, "results": results, "count": len(results)}
 
     async def _tool_get_weather(self, args: dict) -> dict:
-        """Get weather forecast for optional location."""
+        """Get weather forecast for optional location.
+
+        免费版天气 API 只支持地级市以上城市。如果查询县级市失败，
+        返回提示让 LLM 自动尝试上级地级市。
+        """
         days = args.get("days", 1)
         location = args.get("location", "")
         if self.weather:
-            forecasts = await self.weather.get_forecast(days, location)
+            try:
+                forecasts = await self.weather.get_forecast(days, location)
+            except Exception as e:
+                return {"error": str(e), "hint": "免费版可能不支持该城市，请尝试查询上级地级市（如邳州→徐州）"}
+
             if not forecasts:
-                return {"error": "无法获取天气数据"}
-            # 转成 LLM 友好的格式
+                return {"error": f"无法获取'{location}'的天气数据", "hint": "请尝试查询上级地级市"}
+
             result = []
             for f in forecasts:
                 result.append({

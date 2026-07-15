@@ -84,6 +84,10 @@ class WeatherService:
         response.raise_for_status()
         data = response.json()
 
+        # 心知天气返回的 status 字段表示错误（如免费版不支持该城市）
+        if data.get("status") and data.get("status") != "ok":
+            raise ValueError(data.get("status", "unknown error"))
+
         forecasts = []
         for result in data.get("results", []):
             loc_name = result.get("location", {}).get("name", self.location)
