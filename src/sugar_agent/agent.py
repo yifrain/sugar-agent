@@ -73,7 +73,7 @@ class Agent:
         now = datetime.now().strftime("%Y年%m月%d日 %H:%M")
         return template.format(
             target_name=self.config.wechat_bridge.target_user_name,
-            agent_name="小糖",
+            agent_name="小帆⛵️",
             current_time=now,
         )
 
