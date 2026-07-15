@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, func, desc, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sugar_agent.config import PROJECT_ROOT
+from sugar_agent.config import PROMPTS_DIR
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -322,11 +322,10 @@ async def delete_memory(memory_id: str, request: Request, _=Depends(verify_admin
 @router.get("/prompts")
 async def get_prompts(request: Request, _=Depends(verify_admin)):
     """Get all prompt files."""
-    prompts_dir = PROJECT_ROOT / "src" / "sugar_agent" / "prompts"
     files = {}
 
-    for f in prompts_dir.rglob("*.md"):
-        rel_path = f.relative_to(prompts_dir)
+    for f in PROMPTS_DIR.rglob("*.md"):
+        rel_path = f.relative_to(PROMPTS_DIR)
         with open(f, "r", encoding="utf-8") as fh:
             files[str(rel_path)] = fh.read()
 
@@ -336,12 +335,11 @@ async def get_prompts(request: Request, _=Depends(verify_admin)):
 @router.put("/prompts/{name:path}")
 async def update_prompt(name: str, payload: PromptUpdate, request: Request, _=Depends(verify_admin)):
     """Update a prompt file."""
-    prompts_dir = PROJECT_ROOT / "src" / "sugar_agent" / "prompts"
-    file_path = prompts_dir / name
+    file_path = PROMPTS_DIR / name
 
     # Security: ensure the path is within prompts directory
     try:
-        file_path.resolve().relative_to(prompts_dir.resolve())
+        file_path.resolve().relative_to(PROMPTS_DIR.resolve())
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid prompt path")
 

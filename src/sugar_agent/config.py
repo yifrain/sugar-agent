@@ -18,6 +18,8 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 DATA_DIR = PROJECT_ROOT / "data"
+PROMPTS_DIR = PROJECT_ROOT / "src" / "sugar_agent" / "prompts"
+STATIC_DIR = PROJECT_ROOT / "static"
 
 
 class AppConfig(BaseModel):

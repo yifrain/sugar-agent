@@ -10,7 +10,7 @@ from typing import Any, Optional
 
 from loguru import logger
 
-from sugar_agent.config import Config
+from sugar_agent.config import Config, PROMPTS_DIR
 from sugar_agent.llm.client import LLMClient, LlmResponse, ToolCall
 from sugar_agent.llm.tools import LLM_TOOLS
 from sugar_agent.llm.context import ConversationContext
@@ -63,7 +63,7 @@ class Agent:
 
     def _load_system_prompt(self) -> str:
         """Load and template the system prompt."""
-        prompt_path = self.config.prompts_dir / "system.md"
+        prompt_path = PROMPTS_DIR / "system.md"
         if not prompt_path.exists():
             logger.warning(f"System prompt not found at {prompt_path}, using default")
             return "你是Sugar Agent，一个关心用户健康的AI助手。"

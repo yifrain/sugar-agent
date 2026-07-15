@@ -17,14 +17,11 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 
-from sugar_agent.config import load_config, PROJECT_ROOT, DATA_DIR
+from sugar_agent.config import load_config, DATA_DIR, STATIC_DIR
 from sugar_agent.db.models import create_tables, init_db
 
 # Global state accessible via app.state
 config = load_config()
-
-# Add prompts_dir to config for easy access
-config.prompts_dir = PROJECT_ROOT / "src" / "sugar_agent" / "prompts"
 
 
 @asynccontextmanager
@@ -196,8 +193,6 @@ def _create_bridge(config):
     from sugar_agent.wechat.mock_bridge import MockWeChatBridge
     return MockWeChatBridge()
 
-        return MockWeChatBridge()
-
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
@@ -236,8 +231,7 @@ def create_app() -> FastAPI:
         }
 
     # Mount static files for admin UI at /admin/
-    static_dir = PROJECT_ROOT / "static"
-    app.mount("/admin", StaticFiles(directory=str(static_dir), html=True), name="admin")
+    app.mount("/admin", StaticFiles(directory=str(STATIC_DIR), html=True), name="admin")
 
     # Import and register API routes
     from sugar_agent.api.webhook import router as webhook_router
