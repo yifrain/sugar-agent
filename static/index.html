@@ -62,12 +62,12 @@
             </div>
         </aside>
 
-        <!-- Toast Notification -->
+        <!-- Toast Notification (auto-dismiss only, no click needed) -->
         <div x-show="toast.show" x-transition
+             x-init="setTimeout(() => toast.show = false, 3000)"
              :class="toast.type === 'error' ? 'bg-red-500' : 'bg-green-500'"
-             class="fixed top-5 right-5 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm max-w-sm"
-             x-text="toast.message"
-             @click="toast.show = false">
+             class="fixed top-5 right-5 z-50 px-5 py-3 rounded-lg shadow-lg text-white text-sm max-w-sm pointer-events-none"
+             x-text="toast.message">
         </div>
 
         <!-- Main Content -->
@@ -365,7 +365,7 @@
         </main>
     </div>
 
-    <script src="/admin/js/api.js"></script>
-    <script src="/admin/js/app.js"></script>
+    <script src="/admin/js/api.js?v=2"></script>
+    <script src="/admin/js/app.js?v=2"></script>
 </body>
 </html>
