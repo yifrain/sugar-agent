@@ -1,36 +1,48 @@
 #!/bin/bash
 # Sugar Agent 一键更新脚本
-# 放到服务器上：bash deploy/update.sh
-
 set -e
 cd "$(dirname "$0")/.."
 
-echo "🔄 正在更新 sugar-agent..."
+# 1. 自动找虚拟环境
+VENV=""
+for d in .venv .env_sugar env venv; do
+    if [ -f "$d/bin/activate" ]; then
+        VENV="$d"
+        break
+    fi
+done
 
-# 1. 停旧进程
+echo "🔍 虚拟环境: ${VENV:-无（用系统python）}"
+echo "🔄 更新 sugar-agent..."
+
+# 2. 停旧进程
 kill -9 $(lsof -t -i:8080) 2>/dev/null || true
 sleep 1
 
-# 2. 拉最新代码
+# 3. 拉最新代码
 git pull
 
-# 3. 安装依赖
-if [ -d ".venv" ]; then
-    .venv/bin/pip install -e . -q
+# 4. 装依赖
+if [ -n "$VENV" ]; then
+    "$VENV/bin/pip" install -e . -q -i https://pypi.tuna.tsinghua.edu.cn/simple
 else
     pip install -e . -q -i https://pypi.tuna.tsinghua.edu.cn/simple
 fi
 
-# 4. 启动
-nohup python -m sugar_agent > sugar.log 2>&1 &
+# 5. 启动（用虚拟环境的python）
+if [ -n "$VENV" ]; then
+    nohup "$VENV/bin/python" -m sugar_agent > sugar.log 2>&1 &
+else
+    nohup python -m sugar_agent > sugar.log 2>&1 &
+fi
 sleep 3
 
-# 5. 检查
+# 6. 检查
 echo ""
 echo "📋 启动日志:"
-tail -20 sugar.log
+tail -15 sugar.log
 echo ""
 echo "🏥 健康检查:"
-curl -s http://localhost:8080/api/v1/health | python3 -m json.tool 2>/dev/null || echo "(服务可能还在启动中...)"
+curl -s http://localhost:8080/api/v1/health | python3 -m json.tool 2>/dev/null || echo "(仍在启动中...)"
 echo ""
-echo "✅ 更新完成！管理后台: http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo '服务器IP'):8080/admin/"
+echo "✅ 完成！"
