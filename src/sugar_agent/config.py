@@ -43,13 +43,14 @@ class WeChatBridgeConfig(BaseModel):
 
 
 class WeComConfig(BaseModel):
-    """企业微信应用配置。"""
+    """企业微信客户联系配置。"""
     enabled: bool = False
-    corp_id: str = ""       # 企业ID (ww开头)
-    agent_id: str = ""      # 应用AgentId
-    secret: str = ""        # 应用Secret
-    token: str = ""         # 回调Token (3-32位, 自己设)
-    encoding_aes_key: str = ""  # 回调EncodingAESKey (43位)
+    corp_id: str = ""               # 企业ID (ww开头)
+    agent_id: str = ""              # 应用AgentId
+    secret: str = ""                # 应用Secret 或 客户联系Secret
+    token: str = ""                 # 回调Token (3-32位，自己设)
+    encoding_aes_key: str = ""      # 回调EncodingAESKey (43位)
+    service_userid: str = ""        # 接待人员的UserID（你自己的企业微信账号ID）
 
 
 class LlmFallbackConfig(BaseModel):

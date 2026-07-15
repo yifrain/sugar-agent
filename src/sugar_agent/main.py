@@ -162,7 +162,7 @@ def _create_bridge(config):
     """Create the appropriate WeChat bridge based on configuration."""
     bridge_type = config.wechat_bridge.type
 
-    # 企业微信模式（推荐）
+    # 企业微信"客户联系"模式（推荐：零封禁 + 无限制主动推送）
     if bridge_type == "wecom" and config.wecom.enabled:
         from sugar_agent.wechat.wecom_bridge import WeComBridge
         return WeComBridge(
@@ -171,6 +171,7 @@ def _create_bridge(config):
             secret=config.wecom.secret,
             token=config.wecom.token,
             encoding_aes_key=config.wecom.encoding_aes_key,
+            service_userid=config.wecom.service_userid,
         )
 
     # Mock 模式（开发调试）

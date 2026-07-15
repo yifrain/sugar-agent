@@ -21,14 +21,15 @@ wechat_bridge:
   webhook:
     secret_token: ""
 
-# 企业微信应用（零封禁风险，推荐）
+# 企业微信"客户联系"（推荐，零风险 + 无限制主动推送）
 wecom:
   enabled: false
-  corp_id: ""             # 企业ID (ww开头)
-  agent_id: ""            # 应用AgentId (纯数字)
-  secret: ""              # 应用Secret
-  token: ""               # 回调Token (3-32位，自己设)
-  encoding_aes_key: ""    # 回调EncodingAESKey (43位)
+  corp_id: ""               # 企业ID (ww开头)
+  agent_id: ""              # 应用AgentId (纯数字)
+  secret: ""                # 应用Secret
+  token: ""                 # 回调Token (3-32位，自己设)
+  encoding_aes_key: ""      # 回调EncodingAESKey (43位)
+  service_userid: ""        # 接待人员UserID（你自己的账号ID，如 "YifanLi"）
 
 llm:
   provider: deepseek
