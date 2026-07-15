@@ -56,35 +56,14 @@ class ConversationContext:
             }
         )
 
-    def build_messages(
-        self,
-        system_prompt: str,
-        memories_context: str = "",
-        bg_context: str = "",
-        weather_context: str = "",
-    ) -> list[dict]:
-        """Build the full message list for the LLM.
+    def build_messages(self, system_prompt: str) -> list[dict]:
+        """组装发给 LLM 的消息列表。
 
-        Returns a list of message dicts ready for the LLM API:
-        - System prompt (with injected context)
-        - Summary of older messages (if available)
-        - Recent conversation turns
+        [0] system: 人格提示词
+        [1] system: 旧对话摘要（如果上下文过长）
+        [2..n] 最近的对话轮次
         """
-        messages = []
-
-        # System prompt with context injection
-        full_system = system_prompt
-
-        if memories_context:
-            full_system += f"\n\n## 相关记忆\n{memories_context}"
-
-        if bg_context:
-            full_system += f"\n\n## 近期血糖数据\n{bg_context}"
-
-        if weather_context:
-            full_system += f"\n\n## 当前天气\n{weather_context}"
-
-        messages.append({"role": "system", "content": full_system})
+        messages = [{"role": "system", "content": system_prompt}]
 
         # Add summary if we have one
         if self._summary:

@@ -62,40 +62,30 @@ class Agent:
         self.messages_processed = 0
 
     def _load_system_prompt(self) -> str:
-        """Load and template the system prompt."""
+        """加载 system.md 模板，填入基本变量。"""
         prompt_path = PROMPTS_DIR / "system.md"
         if not prompt_path.exists():
-            logger.warning(f"System prompt not found at {prompt_path}, using default")
-            return "你是Sugar Agent，一个关心用户健康的AI助手。"
+            return "你是Sugar Agent。"
 
         with open(prompt_path, "r", encoding="utf-8") as f:
             template = f.read()
 
-        # Template variables
         now = datetime.now().strftime("%Y年%m月%d日 %H:%M")
         return template.format(
             target_name=self.config.wechat_bridge.target_user_name,
             agent_name="小糖",
             current_time=now,
-            weather_summary="待获取",
-            bg_trend="暂无数据",
-            memories="暂无",
-            key_knowledge="",
-            memories_detail="",
-            bg_detail="",
         )
 
     async def process_incoming_message(self, payload) -> str:
-        """Process an incoming message from a user.
+        """处理一条用户消息。
 
-        Full pipeline:
-        1. Parse blood glucose from message
-        2. Store message in DB
-        3. If BG detected, auto-store it
-        4. Build context with memories + BG history + weather
-        5. Run LLM with tool execution loop
-        6. Store assistant response in DB
-        7. Return response text
+        流程：
+        1. 正则提取血糖值（如果有）→ 自动入库
+        2. 消息入库 + 加入对话历史
+        3. 组装 messages：[system.md人格] + [历史对话]
+        4. LLM 调用（LLM 自己决定是否需要调工具查天气/血糖/记忆）
+        5. 回复入库，返回
         """
         from_user = payload.from_user if hasattr(payload, "from_user") else payload.get("from_user")
         from_name = payload.from_name if hasattr(payload, "from_name") else payload.get("from_name", "")
@@ -104,38 +94,25 @@ class Agent:
         self.messages_processed += 1
         logger.info(f"Agent processing message #{self.messages_processed} from {from_name}")
 
-        # Step 1: Parse blood glucose
+        # 1. 自动提取并记录血糖
         bg_reading = self.bg_parser.parse(content)
         if bg_reading:
             logger.info(f"Detected BG: {bg_reading.value_mmol} mmol/L")
-            # Auto-record to DB
             await self._store_bg_reading(bg_reading)
 
-        # Step 2: Add user message to context
+        # 2. 用户消息入库 + 加入对话历史
         self.context.add_message("user", content)
         await self._store_message(from_user, from_name, "user", content)
 
-        # Step 3: Build enriched context
-        memories_context = await self._get_memories_context()
-        bg_context = await self._get_bg_context()
-        weather_context = await self._get_weather_context()
+        # 3. 组装消息：[system] = 人格, [user, assistant...] = 历史
+        messages = self.context.build_messages(self.system_prompt)
 
-        # Step 4: Build message list for LLM
-        messages = self.context.build_messages(
-            system_prompt=self.system_prompt,
-            memories_context=memories_context,
-            bg_context=bg_context,
-            weather_context=weather_context,
-        )
-
-        # Step 5: Run LLM with tool loop
+        # 4. LLM（它会自己调工具：get_weather, query_memory, get_blood_glucose_trend）
         try:
             response_text = await self._run_llm_with_tools(messages)
 
-            # Step 6: Store assistant response
             self.context.add_message("assistant", response_text)
             await self._store_message(from_user, from_name, "assistant", response_text)
-
             return response_text
 
         except Exception as e:
@@ -406,38 +383,3 @@ class Agent:
             logger.error(f"Failed to get BG readings: {e}")
             return []
 
-    async def _get_memories_context(self) -> str:
-        """Get relevant memories for context injection."""
-        if not self.memory:
-            return ""
-        try:
-            memories = await self.memory.get_recent(limit=self.config.memory.max_context_memories)
-            if not memories:
-                return ""
-            return "\n".join(f"- [{m.get('category', '')}] {m.get('content', '')}" for m in memories)
-        except Exception:
-            return ""
-
-    async def _get_bg_context(self) -> str:
-        """Get blood glucose context for injection."""
-        readings = await self._get_recent_bg_readings(days=3)
-        if not readings:
-            return "暂无近期血糖数据"
-
-        lines = ["最近3天血糖记录："]
-        for r in readings[:10]:
-            time_str = r.recorded_at.strftime("%m/%d %H:%M") if r.recorded_at else "未知时间"
-            ctx = r.context or ""
-            lines.append(f"- {time_str}: {r.value_mmol} mmol/L {ctx}")
-        return "\n".join(lines)
-
-    async def _get_weather_context(self) -> str:
-        """Get current weather for context."""
-        if self.weather:
-            try:
-                forecast = await self.weather.get_forecast(days=1)
-                if isinstance(forecast, dict):
-                    return json.dumps(forecast, ensure_ascii=False)
-            except Exception:
-                pass
-        return ""
