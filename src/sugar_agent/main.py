@@ -162,26 +162,38 @@ def _create_bridge(config):
     """Create the appropriate WeChat bridge based on configuration."""
     bridge_type = config.wechat_bridge.type
 
-    if bridge_type == "mock" or config.app.env == "development" and not config.wechat_bridge.base_url:
-        from sugar_agent.wechat.mock_bridge import MockWeChatBridge
+    # 企业微信模式（推荐）
+    if bridge_type == "wecom" and config.wecom.enabled:
+        from sugar_agent.wechat.wecom_bridge import WeComBridge
+        return WeComBridge(
+            corp_id=config.wecom.corp_id,
+            agent_id=config.wecom.agent_id,
+            secret=config.wecom.secret,
+            token=config.wecom.token,
+            encoding_aes_key=config.wecom.encoding_aes_key,
+        )
 
+    # Mock 模式（开发调试）
+    if bridge_type == "mock":
+        from sugar_agent.wechat.mock_bridge import MockWeChatBridge
         return MockWeChatBridge(
             target_user_id=config.wechat_bridge.target_user_id,
             target_user_name=config.wechat_bridge.target_user_name,
         )
 
-    elif bridge_type == "http":
+    # HTTP 桥接模式
+    if bridge_type == "http":
         from sugar_agent.wechat.http_bridge import HttpBridgeConfig, HttpWeChatBridge
-
         bridge_config = HttpBridgeConfig(
             base_url=config.wechat_bridge.base_url,
             api_key=config.wechat_bridge.api_key,
         )
         return HttpWeChatBridge(bridge_config)
 
-    else:
-        logger.warning(f"Unknown bridge type: {bridge_type}, using mock bridge")
-        from sugar_agent.wechat.mock_bridge import MockWeChatBridge
+    # 默认：开发环境用 mock
+    logger.warning(f"Unknown bridge type '{bridge_type}' or not configured, using mock bridge")
+    from sugar_agent.wechat.mock_bridge import MockWeChatBridge
+    return MockWeChatBridge()
 
         return MockWeChatBridge()
 
@@ -229,9 +241,11 @@ def create_app() -> FastAPI:
     # Import and register API routes
     from sugar_agent.api.webhook import router as webhook_router
     from sugar_agent.api.admin import router as admin_router
+    from sugar_agent.api.wecom import router as wecom_router
 
     app.include_router(webhook_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
+    app.include_router(wecom_router, prefix="/api/v1")
 
     return app
 

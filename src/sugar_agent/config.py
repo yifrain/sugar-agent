@@ -42,6 +42,16 @@ class WeChatBridgeConfig(BaseModel):
     webhook: dict = Field(default_factory=lambda: {"secret_token": ""})
 
 
+class WeComConfig(BaseModel):
+    """企业微信应用配置。"""
+    enabled: bool = False
+    corp_id: str = ""       # 企业ID (ww开头)
+    agent_id: str = ""      # 应用AgentId
+    secret: str = ""        # 应用Secret
+    token: str = ""         # 回调Token (3-32位, 自己设)
+    encoding_aes_key: str = ""  # 回调EncodingAESKey (43位)
+
+
 class LlmFallbackConfig(BaseModel):
     provider: str = "qwen"
     model: str = "qwen/qwen-turbo"
@@ -121,6 +131,7 @@ class Config(BaseModel):
     app: AppConfig = Field(default_factory=AppConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
     wechat_bridge: WeChatBridgeConfig = Field(default_factory=WeChatBridgeConfig)
+    wecom: WeComConfig = Field(default_factory=WeComConfig)
     llm: LlmConfig = Field(default_factory=LlmConfig)
     weather: WeatherConfig = Field(default_factory=WeatherConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
