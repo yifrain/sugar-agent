@@ -2,16 +2,24 @@
 
 每个任务都是自描述的——包含名称、说明、cron 表达式、
 以及"如果现在触发会发送什么"的预览能力。
+
+持久化：通过 admin UI 修改的任务配置会保存到 data/scheduler.json，
+重启服务后自动加载，不会丢失。
 """
 
+import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from loguru import logger
 
-from sugar_agent.config import ScheduleConfig
+from sugar_agent.config import ScheduleConfig, DATA_DIR
+
+# 持久化文件路径
+SCHEDULER_STATE_FILE = DATA_DIR / "scheduler.json"
 
 # 任务注册表：每个任务包含自描述信息和 handler
 TASK_REGISTRY = {}
@@ -31,10 +39,13 @@ class TaskScheduler:
         self.bridge = bridge
         self.weather_service = weather_service
         self.scheduler = AsyncIOScheduler(timezone=config.timezone)
-        self._history: list[dict] = []  # 内存中的执行记录
+        self._history: list[dict] = []
 
         # 注册所有内置任务
         self._register_builtin_tasks()
+
+        # 从持久化文件恢复配置（覆盖 YAML 默认值）
+        self._load_persisted_config()
 
     def _register_builtin_tasks(self):
         """注册四个内置任务。"""
@@ -194,6 +205,45 @@ class TaskScheduler:
             logger.error(f"触发任务 {task_id} 失败: {e}")
             return {"status": "error", "message": str(e)}
 
+    # ===== 持久化：admin UI 改的时间重启不丢失 =====
+
+    def _load_persisted_config(self):
+        """从 data/scheduler.json 恢复配置。"""
+        if not SCHEDULER_STATE_FILE.exists():
+            return
+        try:
+            with open(SCHEDULER_STATE_FILE, "r") as f:
+                saved = json.load(f)
+            for task_id, overrides in saved.get("tasks", {}).items():
+                t_config = self._get_task_config(task_id)
+                if t_config:
+                    if "enabled" in overrides:
+                        t_config.enabled = overrides["enabled"]
+                    if "cron_hour" in overrides:
+                        t_config.cron_hour = overrides["cron_hour"]
+                    if "cron_minute" in overrides:
+                        t_config.cron_minute = overrides["cron_minute"]
+            logger.info(f"已从 {SCHEDULER_STATE_FILE.name} 恢复调度配置")
+        except Exception as e:
+            logger.warning(f"恢复调度配置失败: {e}")
+
+    def _save_persisted_config(self):
+        """保存当前配置到 data/scheduler.json。"""
+        try:
+            tasks = {}
+            for task_id in TASK_REGISTRY:
+                t = self._get_task_config(task_id)
+                if t:
+                    tasks[task_id] = {
+                        "enabled": t.enabled,
+                        "cron_hour": t.cron_hour,
+                        "cron_minute": t.cron_minute,
+                    }
+            with open(SCHEDULER_STATE_FILE, "w") as f:
+                json.dump({"tasks": tasks}, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"保存调度配置失败: {e}")
+
     async def update_task(self, task_id: str, **kwargs) -> dict:
         """更新任务配置（启停、修改时间）。"""
         job = self.scheduler.get_job(task_id)
@@ -227,6 +277,9 @@ class TaskScheduler:
                     day_of_week=t_config.cron_day if hasattr(t_config, 'cron_day') else None,
                 ),
             )
+
+        # 持久化到文件
+        self._save_persisted_config()
 
         return {"status": "ok", "task_id": task_id}
 
