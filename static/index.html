@@ -86,6 +86,52 @@
                 </div>
             </div>
 
+            <!-- Chat Test (聊天测试) -->
+            <div x-show="currentPage === 'chat'">
+                <h1 class="text-2xl font-bold text-gray-800 mb-6">💬 聊天测试</h1>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[70vh]">
+                    <!-- Messages -->
+                    <div class="flex-1 overflow-y-auto p-4 space-y-3" id="chatMessages" x-ref="chatMessages">
+                        <template x-if="chatHistory.length === 0">
+                            <div class="text-center text-gray-400 py-20">
+                                <div class="text-5xl mb-4">🍬</div>
+                                <p>在这里测试和 Agent 对话</p>
+                                <p class="text-sm mt-1">试试说"血糖7.8 刚吃完午饭"</p>
+                            </div>
+                        </template>
+                        <template x-for="(msg, i) in chatHistory" :key="i">
+                            <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                                <div :class="msg.role === 'user'
+                                    ? 'bg-pink-500 text-white rounded-2xl rounded-br-md max-w-[75%]'
+                                    : 'bg-gray-100 text-gray-800 rounded-2xl rounded-bl-md max-w-[75%]'"
+                                    class="px-4 py-3 text-sm">
+                                    <p class="whitespace-pre-wrap" x-text="msg.content"></p>
+                                </div>
+                            </div>
+                        </template>
+                        <!-- Typing indicator -->
+                        <div x-show="chatLoading" class="flex justify-start">
+                            <div class="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+                                <span class="text-gray-400 text-sm">正在思考...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Input -->
+                    <div class="border-t p-4 flex gap-3">
+                        <input type="text" x-model="chatInput"
+                               @keyup.enter="sendChat()"
+                               placeholder="输入消息测试 Agent 回复..."
+                               :disabled="chatLoading"
+                               class="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-400 focus:border-transparent disabled:bg-gray-50">
+                        <button @click="sendChat()"
+                                :disabled="chatLoading || !chatInput.trim()"
+                                class="px-6 py-3 bg-pink-500 text-white rounded-xl text-sm font-medium hover:bg-pink-600 disabled:opacity-50 transition">
+                            发送
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Conversations -->
             <div x-show="currentPage === 'conversations'">
                 <h1 class="text-2xl font-bold text-gray-800 mb-6">💬 对话记录</h1>

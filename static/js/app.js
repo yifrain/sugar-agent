@@ -13,6 +13,7 @@ document.addEventListener('alpine:init', () => {
         // === Navigation ===
         currentPage: 'dashboard',
         navItems: [
+            { id: 'chat', label: '聊天测试', icon: '💬' },
             { id: 'dashboard', label: '仪表盘', icon: '📊' },
             { id: 'conversations', label: '对话记录', icon: '💬' },
             { id: 'memories', label: '记忆管理', icon: '🧠' },
@@ -31,6 +32,11 @@ document.addEventListener('alpine:init', () => {
         convSearch: '',
         convDate: '',
         quickMessage: '',
+
+        // === Chat Test ===
+        chatHistory: [],
+        chatInput: '',
+        chatLoading: false,
 
         // === Memories ===
         memories: [],
@@ -107,6 +113,10 @@ document.addEventListener('alpine:init', () => {
         navigate(page) {
             this.currentPage = page;
             switch (page) {
+                case 'chat':
+                    // nothing special to load
+                    setTimeout(() => this.scrollChat(), 100);
+                    break;
                 case 'dashboard':
                     this.loadDashboard();
                     break;
@@ -169,6 +179,30 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
                 alert('发送失败: ' + e.message);
             }
+        },
+
+        // === Chat Test ===
+        async sendChat() {
+            const content = this.chatInput.trim();
+            if (!content || this.chatLoading) return;
+            this.chatHistory.push({ role: 'user', content });
+            this.chatInput = '';
+            this.chatLoading = true;
+            setTimeout(() => this.scrollChat(), 50);
+            try {
+                const result = await api.chat(content);
+                this.chatHistory.push({ role: 'agent', content: result.reply || '(无回复)' });
+            } catch (e) {
+                this.chatHistory.push({ role: 'agent', content: '😢 发送失败: ' + e.message });
+            } finally {
+                this.chatLoading = false;
+                setTimeout(() => this.scrollChat(), 50);
+            }
+        },
+
+        scrollChat() {
+            const el = document.getElementById('chatMessages');
+            if (el) el.scrollTop = el.scrollHeight;
         },
 
         // === Memories ===

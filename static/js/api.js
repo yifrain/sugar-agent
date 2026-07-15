@@ -88,6 +88,11 @@ const api = {
         return this.request('PUT', `/prompts/${name}`, { content });
     },
 
+    // Chat
+    async chat(content) {
+        return this.request('POST', '/chat', { content });
+    },
+
     // Blood Glucose
     async getBloodGlucose(days = 30) {
         return this.request('GET', `/blood-glucose?days=${days}&limit=200`);

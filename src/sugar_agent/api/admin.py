@@ -242,6 +242,50 @@ async def send_message(payload: SendMessagePayload, request: Request, _=Depends(
     return {"status": "sent" if success else "failed"}
 
 
+class ChatPayload(BaseModel):
+    content: str
+
+
+@router.post("/chat")
+async def chat(payload: ChatPayload, request: Request, _=Depends(verify_admin)):
+    """测试聊天：发送消息给 Agent，返回回复。
+
+    这条消息会完整经过 Agent 处理流程（血糖解析、LLM调用、工具执行），
+    回复同时会通过桥接发送给目标用户。
+    """
+    agent = request.app.state.agent
+    bridge = request.app.state.bridge
+    config = request.app.state.config
+
+    if not agent:
+        raise HTTPException(status_code=503, detail="Agent not available")
+
+    from sugar_agent.wechat.base import IncomingMessage
+    msg = IncomingMessage(
+        from_user="admin_test",
+        from_name="测试用户",
+        content=payload.content,
+        message_type="text",
+    )
+
+    # Run through agent
+    try:
+        reply = await agent.process_incoming_message(msg)
+    except Exception as e:
+        from loguru import logger
+        logger.exception(f"Chat error: {e}")
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+    # Also send via bridge if available
+    if bridge and config.wechat_bridge.target_user_id:
+        try:
+            await bridge.send_text(config.wechat_bridge.target_user_id, payload.content)
+        except Exception:
+            pass  # non-critical
+
+    return {"reply": reply, "status": "ok"}
+
+
 # === Memories ===
 
 @router.get("/memories")
