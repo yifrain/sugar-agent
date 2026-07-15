@@ -12,14 +12,16 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-# Load .env file first so os.environ picks it up
-load_dotenv()
-
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 DATA_DIR = PROJECT_ROOT / "data"
 PROMPTS_DIR = PROJECT_ROOT / "src" / "sugar_agent" / "prompts"
 STATIC_DIR = PROJECT_ROOT / "static"
+
+# Load .env file from project root (override=True to force .env values)
+_dotenv_path = PROJECT_ROOT / ".env"
+if _dotenv_path.exists():
+    load_dotenv(dotenv_path=_dotenv_path, override=True)
 
 
 class AppConfig(BaseModel):
@@ -218,7 +220,13 @@ def load_config() -> Config:
 
 
 def _map_secret_env_vars(config_dict: dict) -> None:
-    """Map well-known environment variables to config keys."""
+    """Map well-known environment variables to config keys.
+
+    Skips placeholder values like 'your-xxx' or 'sk-your-xxx'.
+    """
+    def _is_placeholder(val: str) -> bool:
+        return not val or val.startswith("your-") or val == ""
+
     secret_mappings = {
         "DEEPSEEK_API_KEY": ("llm", "api_key_deepseek"),
         "DASHSCOPE_API_KEY": ("llm", "api_key_qwen"),
@@ -231,11 +239,13 @@ def _map_secret_env_vars(config_dict: dict) -> None:
         "ADMIN_PASSWORD": ("admin", "password"),
     }
     for env_key, config_path in secret_mappings.items():
-        if env_key in os.environ:
-            # Navigate nested dict
-            current = config_dict
-            for part in config_path[:-1]:
-                if part not in current:
-                    current[part] = {}
-                current = current[part]
-            current[config_path[-1]] = os.environ[env_key]
+        val = os.environ.get(env_key, "")
+        if not val or _is_placeholder(val):
+            continue
+        # Navigate nested dict
+        current = config_dict
+        for part in config_path[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        current[config_path[-1]] = val
