@@ -328,23 +328,38 @@ class WeComBridge(WeChatBridge):
             return m.group(1) if m else ""
 
         msg_type = get_tag("MsgType")
-        if msg_type != "text":
-            return None
 
         from_user = get_tag("FromUserName")
-        content = get_tag("Content")
         msg_id = get_tag("MsgId")
-
-        if not from_user or not content:
+        if not from_user:
             return None
 
-        return IncomingMessage(
-            from_user=from_user,   # external_userid — 之后发消息就用这个ID
-            from_name="",
-            content=content,
-            message_type="text",
-            message_id=msg_id,
-        )
+        # 文本消息
+        if msg_type == "text":
+            content = get_tag("Content")
+            if not content:
+                return None
+            return IncomingMessage(
+                from_user=from_user,
+                from_name="",
+                content=content,
+                message_type="text",
+                message_id=msg_id,
+            )
+
+        # 图片消息
+        if msg_type == "image":
+            pic_url = get_tag("PicUrl")
+            return IncomingMessage(
+                from_user=from_user,
+                from_name="",
+                content="[图片]",
+                message_type="image",
+                image_url=pic_url,
+                message_id=msg_id,
+            )
+
+        return None
 
     def build_reply_xml(self, to_user: str, from_user: str, content: str) -> str:
         """构造被动回复 XML。"""

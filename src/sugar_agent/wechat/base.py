@@ -14,6 +14,7 @@ class IncomingMessage:
     from_name: str = ""
     content: str = ""
     message_type: str = "text"  # text, image, voice
+    image_url: str = ""         # 图片消息的URL
     message_id: Optional[str] = None
     timestamp: Optional[datetime] = None
     raw_payload: dict = field(default_factory=dict)

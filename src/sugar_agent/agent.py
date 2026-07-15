@@ -78,36 +78,43 @@ class Agent:
         )
 
     async def process_incoming_message(self, payload) -> str:
-        """处理一条用户消息。
-
-        流程：
-        1. 正则提取血糖值（如果有）→ 自动入库
-        2. 消息入库 + 加入对话历史
-        3. 组装 messages：[system.md人格] + [历史对话]
-        4. LLM 调用（LLM 自己决定是否需要调工具查天气/血糖/记忆）
-        5. 回复入库，返回
-        """
+        """处理一条用户消息。支持文本和图片。"""
         from_user = payload.from_user if hasattr(payload, "from_user") else payload.get("from_user")
         from_name = payload.from_name if hasattr(payload, "from_name") else payload.get("from_name", "")
         content = payload.content if hasattr(payload, "content") else payload.get("content", "")
+        msg_type = getattr(payload, "message_type", "text")
+        image_url = getattr(payload, "image_url", "")
 
         self.messages_processed += 1
-        logger.info(f"Agent processing message #{self.messages_processed} from {from_name}")
+        logger.info(f"Agent processing #{self.messages_processed} [{msg_type}] from {from_name}")
 
-        # 1. 自动提取并记录血糖
-        bg_reading = self.bg_parser.parse(content)
-        if bg_reading:
-            logger.info(f"Detected BG: {bg_reading.value_mmol} mmol/L")
-            await self._store_bg_reading(bg_reading)
+        # 1. 文本消息：提取血糖
+        if msg_type == "text":
+            bg_reading = self.bg_parser.parse(content)
+            if bg_reading:
+                logger.info(f"Detected BG: {bg_reading.value_mmol} mmol/L")
+                await self._store_bg_reading(bg_reading)
 
-        # 2. 用户消息入库 + 加入对话历史
-        self.context.add_message("user", content)
-        await self._store_message(from_user, from_name, "user", content)
+        # 2. 消息入库 + 加入对话历史
+        db_content = content if msg_type == "text" else f"[图片] {content}"
+        self.context.add_message("user", db_content)
+        await self._store_message(from_user, from_name, "user", db_content)
 
-        # 3. 组装消息：[system] = 人格, [user, assistant...] = 历史
+        # 3. 组装 LLM 消息（图片消息用多模态格式）
         messages = self.context.build_messages(self.system_prompt)
 
-        # 4. LLM（它会自己调工具：get_weather, query_memory, get_blood_glucose_trend）
+        if msg_type == "image" and image_url:
+            # 将最后一条 user 消息替换为多模态格式
+            last_msg = messages[-1]
+            messages[-1] = {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "请描述这张图片，用你平时聊天的语气回复"},
+                    {"type": "image_url", "image_url": {"url": image_url}},
+                ],
+            }
+
+        # 4. LLM 调用
         try:
             response_text = await self._run_llm_with_tools(messages)
 
