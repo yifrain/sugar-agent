@@ -148,7 +148,6 @@ wecom:
   secret: "你的应用Secret"
   token: "你设的Token"
   encoding_aes_key: "43位随机Key"
-  service_userid: "你的企业微信账号ID"
 llm:
   model: dashscope/qwen-plus
   fallback:
@@ -244,7 +243,6 @@ curl https://你的域名.com/api/v1/health
 | ✅ wecom.secret | production.yaml | 应用Secret |
 | ✅ wecom.token | production.yaml | 回调Token |
 | ✅ wecom.encoding_aes_key | production.yaml | 回调加密Key |
-| ✅ wecom.service_userid | production.yaml | 你的企微账号 |
 | ✅ HTTPS | Nginx+Certbot | 企业微信要求 |
 
 ## 🔌 微信接入（企业微信"客户联系" — 零风险 + 无限制主动推送）
@@ -324,8 +322,6 @@ curl https://你的域名.com/api/v1/health
 | `corp_id` | 「我的企业」→「企业信息」→  企业ID | `ww1234567890abcd` |
 | `agent_id` | 应用详情页顶部 | `1000002` |
 | `secret` | 应用详情页 → 点「查看」Secret | 随机字符串（**只显示一次！**）|
-| `service_userid` | 「通讯录」→ 点自己的名字 → 账号 | 如 `YifanLi` |
-
 #### 第4步：配置接收消息回调
 
 在应用详情页 →「接收消息」→「设置API接收」：

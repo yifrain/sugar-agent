@@ -117,9 +117,6 @@ class WeComBridge(WeChatBridge):
                 "agentid": int(self.agent_id),
                 "text": {"content": text},
             }
-            # 如果配置了 service_userid，加上 sender
-            if self.service_userid:
-                body["sender"] = self.service_userid
 
             response = await client.post(
                 "https://qyapi.weixin.qq.com/cgi-bin/externalcontact/message/send",
@@ -164,9 +161,6 @@ class WeComBridge(WeChatBridge):
                 "agentid": int(self.agent_id),
                 "image": {"media_id": upload_data["media_id"]},
             }
-            if self.service_userid:
-                body["sender"] = self.service_userid
-
             send_resp = await client.post(
                 "https://qyapi.weixin.qq.com/cgi-bin/externalcontact/message/send",
                 params={"access_token": token},
