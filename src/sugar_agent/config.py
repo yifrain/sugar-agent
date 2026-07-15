@@ -6,11 +6,11 @@ Priority: env vars > production.yaml > default.yaml
 
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
@@ -49,12 +49,17 @@ class WeChatBridgeConfig(BaseModel):
 class WeComConfig(BaseModel):
     """企业微信客户联系配置。"""
     enabled: bool = False
-    corp_id: str = ""               # 企业ID (ww开头)
-    agent_id: str = ""              # 应用AgentId
-    secret: str = ""                # 应用Secret 或 客户联系Secret
-    token: str = ""                 # 回调Token (3-32位，自己设)
-    encoding_aes_key: str = ""      # 回调EncodingAESKey (43位)
-    service_userid: str = ""        # 接待人员的UserID（你自己的企业微信账号ID）
+    corp_id: str = ""
+    agent_id: str = ""
+    secret: str = ""
+    token: str = ""
+    encoding_aes_key: str = ""
+    service_userid: str = ""
+
+    @field_validator("agent_id", mode="before")
+    @classmethod
+    def coerce_agent_id(cls, v):
+        return str(v) if v else ""
 
 
 class LlmFallbackConfig(BaseModel):

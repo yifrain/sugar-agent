@@ -355,6 +355,25 @@ class WeComBridge(WeChatBridge):
 
         return None
 
+    @staticmethod
+    def parse_event(xml_string: str) -> Optional[str]:
+        """检测回调中的事件类型。返回 external_userid（如果是添加客户事件），否则 None。"""
+        import re
+        def get_tag(name):
+            m = re.search(f"<{name}><!\\[CDATA\\[(.*?)\\]\\]></{name}>", xml_string)
+            if m:
+                return m.group(1)
+            m = re.search(f"<{name}>(.*?)</{name}>", xml_string)
+            return m.group(1) if m else ""
+
+        msg_type = get_tag("MsgType")
+        event = get_tag("Event")
+        if msg_type == "event" and event == "change_external_contact":
+            change_type = get_tag("ChangeType")
+            if change_type == "add_external_contact":
+                return get_tag("ExternalUserID") or get_tag("UserID")
+        return None
+
     def build_reply_xml(self, to_user: str, from_user: str, content: str) -> str:
         """构造被动回复 XML。"""
         create_time = int(time.time())

@@ -52,40 +52,40 @@ class TaskScheduler:
         _register_task(
             "weather_reminder",
             {
-                "name": "早晨天气提醒",
-                "description": "每天早上给女朋友发送天气预报，下雨提醒带伞，降温提醒添衣，高温提醒防晒",
-                "icon": "🌤️",
-                "example_message": "宝宝早安！☀️ 今天北京晴，25°C~36°C，记得防晒多喝水～新的一天加油💪",
+                "name": "早晨问候 + 天气",
+                "description": "每天早上像男朋友一样说早安，自然地提醒今天的天气：下雨带伞、降温添衣、晴天也有好心情",
+                "icon": "☀️",
+                "example_message": "早呀☀️ 今天北京大晴天，25度，心情也要亮起来！记得吃早饭～",
             },
             self._weather_reminder,
         )
         _register_task(
             "afternoon_checkin",
             {
-                "name": "下午暖心问候",
-                "description": "下午3点左右主动问候，关心她今天的状态和血糖情况",
+                "name": "下午问候",
+                "description": "下午关心她今天过得怎么样，忙不忙，心情好不好。自然的聊天，不提血糖",
                 "icon": "💛",
-                "example_message": "下午啦～今天感觉怎么样？血糖还稳定吗？记得测一下哦😊",
+                "example_message": "下午啦～今天忙吗？累了就休息会儿，别太拼哦",
             },
             self._afternoon_checkin,
         )
         _register_task(
             "evening_summary",
             {
-                "name": "晚间贴心小结",
-                "description": "晚上回顾一天的血糖数据，送上温暖的晚安问候",
+                "name": "晚安问候",
+                "description": "晚上温柔地提醒她早点休息，祝她做个好梦",
                 "icon": "🌙",
-                "example_message": "今天血糖整体不错，达标率80%！辛苦啦，早点休息，晚安宝贝🌙",
+                "example_message": "今天辛苦了，早点睡哦。晚安，做个好梦🌙",
             },
             self._evening_summary,
         )
         _register_task(
             "weekly_health",
             {
-                "name": "每周健康周报",
-                "description": "每周日早上发送周血糖趋势总结，用数据给鼓励",
-                "icon": "📊",
-                "example_message": "这周血糖总结：平均6.2，达标率75%，比上周有进步！继续保持哦💪",
+                "name": "周末问候",
+                "description": "每周日早上祝她周末愉快，让她放松享受休息日",
+                "icon": "🌸",
+                "example_message": "周末快乐呀！今天好好放松，做点自己喜欢的事～🌸",
             },
             self._weekly_health,
         )

@@ -139,10 +139,23 @@ class Agent:
             Generated text or None
         """
         task_prompts = {
-            "weather": f"现在是早晨，请根据以下天气信息给{self.config.wechat_bridge.target_user_name}发送一条温馨的早安和天气提醒：\n{json.dumps(context_data, ensure_ascii=False)}",
-            "checkin": f"下午了，请温柔地问候一下{self.config.wechat_bridge.target_user_name}，关心她今天的状态和血糖情况。",
-            "summary": f"晚上了，请根据今天的对话和血糖数据，给{self.config.wechat_bridge.target_user_name}发一条温暖的晚间问候。",
-            "health": f"这是一周的血糖数据总结，请用关心和鼓励的语气告诉{self.config.wechat_bridge.target_user_name}：\n{json.dumps(context_data, ensure_ascii=False)}",
+            "weather": (
+                f"现在是早晨，请以男朋友的语气给{self.config.wechat_bridge.target_user_name}发早安问候。"
+                f"根据天气信息自然地提醒她：{json.dumps(context_data, ensure_ascii=False)}。"
+                f"要温暖自然，像真人早上醒来发的消息。一两句话就够了。"
+            ),
+            "checkin": (
+                f"下午了，请自然地关心一下{self.config.wechat_bridge.target_user_name}。"
+                f"问她今天过得怎么样，忙不忙，心情好不好。不要提血糖。"
+            ),
+            "summary": (
+                f"晚上了，给{self.config.wechat_bridge.target_user_name}发条晚安消息。"
+                f"温柔一点，关心她今晚早点休息，做个好梦。"
+            ),
+            "health": (
+                f"这周结束了。请以关心的语气给{self.config.wechat_bridge.target_user_name}发一条周末问候，"
+                f"祝她周末愉快，放松一下。不要提血糖数据。"
+            ),
         }
 
         prompt = task_prompts.get(task_type, "")

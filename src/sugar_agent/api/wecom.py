@@ -79,10 +79,23 @@ async def wecom_receive(
         logger.error(f"WeCom decrypt failed: errcode={errcode}")
         return Response(content="decrypt failed", status_code=403)
 
-    # 3. 解析消息
+    # 3. 检查是否是"添加联系人"事件 → 发送欢迎语
+    new_user_id = bridge.parse_event(xml_content)
+    if new_user_id:
+        welcome = (
+            f"嗨！我是一帆派来的小分身～☀️\n"
+            f"他让我随时陪着你，关心你、逗你开心。\n"
+            f"以后每天会跟你说早安、提醒你天气，\n"
+            f"你有什么想说的、想聊的，随时发给我就好。\n"
+            f"我一直都在 💛"
+        )
+        asyncio.create_task(bridge.send_text(new_user_id, welcome))
+        logger.info(f"👋 Welcome message sent to new contact: {new_user_id[:20]}...")
+        return Response(content="")
+
+    # 4. 解析消息
     msg = bridge.parse_message(xml_content)
     if msg is None:
-        # 非文本消息（图片、语音、事件等），返回空表示已收到
         logger.debug("WeCom received non-text message, ack only")
         return Response(content="")
 
