@@ -142,35 +142,66 @@
 
             <!-- Conversations -->
             <div x-show="currentPage === 'conversations'">
-                <h1 class="text-2xl font-bold text-gray-800 mb-6">💬 对话记录</h1>
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="p-4 border-b flex gap-3">
-                        <input type="text" x-model="convSearch" @keyup.enter="loadConversations()" placeholder="搜索对话内容..." class="flex-1 px-4 py-2 border rounded-lg text-sm">
-                        <input type="date" x-model="convDate" @change="loadConversations()" class="px-4 py-2 border rounded-lg text-sm">
-                        <button @click="loadConversations()" class="px-4 py-2 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600">搜索</button>
-                    </div>
-                    <div class="divide-y max-h-[60vh] overflow-y-auto">
-                        <template x-for="msg in conversations" :key="msg.id">
-                            <div class="p-4 hover:bg-gray-50">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span :class="msg.role === 'user' ? 'bg-blue-100 text-blue-600' : msg.is_proactive ? 'bg-purple-100 text-purple-600' : 'bg-pink-100 text-pink-600'"
-                                          class="px-2 py-0.5 rounded text-xs font-medium" x-text="msg.role === 'user' ? msg.from_name || '用户' : 'Agent'"></span>
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">💬 对话记录</h1>
+                <p class="text-sm text-gray-400 mb-4">共 <span x-text="convTotal"></span> 条消息<span x-show="convDate">（<span x-text="convDate"></span>）</span></p>
+
+                <!-- Filter Bar -->
+                <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100 mb-4 flex gap-2 items-center flex-wrap">
+                    <input type="text" x-model="convSearch" @keyup.enter="loadConversations()"
+                           placeholder="搜索关键词..." class="flex-1 min-w-[120px] px-3 py-2 border rounded-lg text-sm">
+                    <input type="date" x-model="convDate" @change="loadConversations()"
+                           class="px-3 py-2 border rounded-lg text-sm w-36">
+                    <select x-model="convRole" @change="loadConversations()"
+                            class="px-3 py-2 border rounded-lg text-sm">
+                        <option value="">全部角色</option>
+                        <option value="user">👩 用户</option>
+                        <option value="assistant">🤖 Agent</option>
+                    </select>
+                    <button @click="convDate=''; convSearch=''; convRole=''; loadConversations()"
+                            class="px-3 py-2 text-xs text-gray-400 hover:text-gray-600">✕ 清除筛选</button>
+                </div>
+
+                <!-- Messages -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y max-h-[55vh] overflow-y-auto" id="convList">
+                    <template x-if="conversations.length === 0">
+                        <div class="text-center py-16 text-gray-400">
+                            <div class="text-4xl mb-3">💬</div>
+                            <p class="text-sm">暂无对话记录</p>
+                        </div>
+                    </template>
+                    <template x-for="msg in conversations" :key="msg.id">
+                        <div class="p-4 hover:bg-gray-50 transition">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span x-text="msg.role === 'user' ? '👩' : msg.is_proactive ? '📢' : '🤖'"></span>
+                                    <span :class="msg.role === 'user' ? 'bg-blue-50 text-blue-600' : msg.is_proactive ? 'bg-purple-50 text-purple-600' : 'bg-pink-50 text-pink-600'"
+                                          class="px-2 py-0.5 rounded text-xs font-medium"
+                                          x-text="msg.role === 'user' ? (msg.from_name || '用户') : (msg.is_proactive ? '主动推送' : 'Agent')"></span>
                                     <span class="text-xs text-gray-400" x-text="formatTime(msg.created_at)"></span>
                                 </div>
-                                <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="msg.content"></p>
+                                <button @click="navigator.clipboard.writeText(msg.content); showToast('已复制')"
+                                        class="text-xs text-gray-300 hover:text-gray-500">复制</button>
                             </div>
-                        </template>
-                    </div>
+                            <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed" x-text="msg.content"></p>
+                        </div>
+                    </template>
                 </div>
-                <!-- Quick Send with inline reply -->
+
+                <!-- Load More -->
+                <div x-show="conversations.length > 0 && conversations.length >= convPage * 50" class="text-center mt-3">
+                    <button @click="convPage++; loadConversations(true)"
+                            class="px-6 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200">加载更多</button>
+                </div>
+
+                <!-- Quick Send -->
                 <div class="mt-4 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <h3 class="text-sm font-medium text-gray-700 mb-2">手动发送消息 (测试)</h3>
                     <div class="flex gap-3 mb-3">
-                        <input type="text" x-model="quickMessage" @keyup.enter="sendQuickMessage()" placeholder="输入消息内容..." class="flex-1 px-4 py-2 border rounded-lg text-sm" :disabled="quickSending">
+                        <input type="text" x-model="quickMessage" @keyup.enter="sendQuickMessage()"
+                               placeholder="输入消息测试 Agent 回复..." class="flex-1 px-4 py-2 border rounded-lg text-sm" :disabled="quickSending">
                         <button @click="sendQuickMessage()" :disabled="quickSending || !quickMessage.trim()"
                                 class="px-6 py-2 bg-pink-500 text-white rounded-lg text-sm hover:bg-pink-600 disabled:opacity-50">发送</button>
                     </div>
-                    <!-- Reply display -->
                     <div x-show="quickReply" class="bg-pink-50 border border-pink-100 rounded-lg p-3">
                         <div class="flex items-start gap-2">
                             <span class="text-sm">🤖</span>
@@ -180,7 +211,7 @@
                             </div>
                         </div>
                     </div>
-                    <div x-show="quickSending" class="text-sm text-gray-400 mt-2">⏳ Agent 思考中...</div>
+                    <div x-show="quickSending" class="text-sm text-gray-400 mt-2">⏳ 思考中...</div>
                 </div>
             </div>
 
@@ -425,7 +456,7 @@
         </main>
     </div>
 
-    <script src="/admin/js/api.js?v=4"></script>
-    <script src="/admin/js/app.js?v=4"></script>
+    <script src="/admin/js/api.js?v=5"></script>
+    <script src="/admin/js/app.js?v=5"></script>
 </body>
 </html>

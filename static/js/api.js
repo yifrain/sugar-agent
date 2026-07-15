@@ -47,10 +47,11 @@ const api = {
     },
 
     // Messages
-    async getMessages(date, search, limit = 50) {
-        let path = `/messages?limit=${limit}`;
+    async getMessages(date, search, role, limit = 50, offset = 0) {
+        let path = `/messages?limit=${limit}&offset=${offset}`;
         if (date) path += `&date=${date}`;
         if (search) path += `&search=${encodeURIComponent(search)}`;
+        if (role) path += `&role=${role}`;
         return this.request('GET', path);
     },
 

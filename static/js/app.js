@@ -31,6 +31,9 @@ document.addEventListener('alpine:init', () => {
         conversations: [],
         convSearch: '',
         convDate: '',
+        convRole: '',
+        convTotal: 0,
+        convPage: 1,
         quickMessage: '',
         quickSending: false,
         quickReply: '',
@@ -132,6 +135,7 @@ document.addEventListener('alpine:init', () => {
                     this.loadDashboard();
                     break;
                 case 'conversations':
+                    this.convPage = 1;
                     this.loadConversations();
                     break;
                 case 'memories':
@@ -172,10 +176,13 @@ document.addEventListener('alpine:init', () => {
         },
 
         // === Conversations ===
-        async loadConversations() {
+        async loadConversations(append = false) {
             try {
-                const data = await api.getMessages(this.convDate || null, this.convSearch || null);
-                this.conversations = data.messages || [];
+                const limit = 50;
+                const offset = append ? (this.convPage - 1) * limit : 0;
+                const data = await api.getMessages(this.convDate || null, this.convSearch || null, this.convRole || null, limit, offset);
+                this.conversations = append ? [...this.conversations, ...(data.messages || [])] : (data.messages || []);
+                this.convTotal = data.total || this.conversations.length;
             } catch (e) {
                 console.error('Conversations load failed:', e);
             }

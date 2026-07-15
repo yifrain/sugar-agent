@@ -108,37 +108,144 @@ pytest
 pytest tests/test_health_parser.py -v
 ```
 
-## 📦 部署
+## 📦 部署到服务器 + 连接企业微信
 
-### 国内云服务器
+### 服务器要求
 
-```bash
-# 1. 设置环境变量
-export SUGAR_REMOTE_HOST=your-server-ip
-export SUGAR_REMOTE_USER=root
+- 国内云服务器（阿里云/腾讯云/京东云，1核2G 足够，约 50元/月）
+- Ubuntu 20.04+ 或 CentOS 7+
+- 一个域名 + SSL 证书（企业微信回调要求 HTTPS）
+- 开放 8080 端口（或通过 Nginx 反代到 443）
 
-# 2. 执行部署
-bash deploy/deploy.sh
-```
-
-部署脚本会自动：
-- 同步源代码到服务器
-- 安装依赖
-- 配置 systemd 服务
-- 启动并检查服务状态
-
-### systemd 服务管理
+### 方式1：Docker 部署（推荐）
 
 ```bash
-# 查看状态
-systemctl status sugar-agent
+# 1. 在服务器上安装 Docker
+curl -fsSL https://get.docker.com | bash
 
-# 重启
-systemctl restart sugar-agent
+# 2. 克隆代码
+git clone https://github.com/yifrain/sugar-agent.git
+cd sugar-agent
 
-# 查看日志
-journalctl -u sugar-agent -f
+# 3. 创建 .env 配置文件（填入真实值）
+cat > .env << 'EOF'
+DASHSCOPE_API_KEY=sk-你的千问key
+SENIVERSE_API_KEY=SvhG1EICm4ihD8D9X
+ADMIN_PASSWORD=你的管理密码
+SUGAR_ENV=production
+EOF
+
+# 4. 创建生产配置
+cat > config/production.yaml << 'EOF'
+app:
+  env: production
+wechat_bridge:
+  type: wecom
+wecom:
+  enabled: true
+  corp_id: "ww你的企业ID"
+  agent_id: "1000002"
+  secret: "你的应用Secret"
+  token: "你设的Token"
+  encoding_aes_key: "43位随机Key"
+  service_userid: "你的企业微信账号ID"
+llm:
+  model: dashscope/qwen-plus
+  fallback:
+    model: deepseek/deepseek-chat
+EOF
+
+# 5. 启动
+docker compose up -d
+
+# 6. 查看日志
+docker compose logs -f
 ```
+
+### 方式2：直接部署
+
+```bash
+# 1. 安装 Python 3.11+
+sudo apt update && sudo apt install python3.11 python3.11-venv -y
+
+# 2. 克隆 + 安装
+git clone https://github.com/yifrain/sugar-agent.git
+cd sugar-agent
+python3.11 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/pip install pycryptodome
+
+# 3. 创建 .env 和 config/production.yaml（同上）
+
+# 4. 安装 systemd 服务
+sudo cp deploy/sugar-agent.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable sugar-agent
+sudo systemctl start sugar-agent
+
+# 5. 查看状态
+sudo systemctl status sugar-agent
+sudo journalctl -u sugar-agent -f
+```
+
+### Nginx 反向代理（HTTPS）
+
+企业微信回调必须 HTTPS。安装 Nginx + Let's Encrypt：
+
+```bash
+sudo apt install nginx certbot python3-certbot-nginx -y
+
+# 配置 Nginx
+sudo tee /etc/nginx/sites-available/sugar-agent > /dev/null << 'EOF'
+server {
+    listen 80;
+    server_name 你的域名.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/sugar-agent /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# 申请免费 SSL 证书
+sudo certbot --nginx -d 你的域名.com
+
+# 证书会自动续期
+```
+
+### 验证部署
+
+```bash
+# 健康检查
+curl https://你的域名.com/api/v1/health
+
+# 管理后台
+# 浏览器打开 https://你的域名.com/admin/
+
+# 企业微信回调URL
+# 在公司后台填: https://你的域名.com/api/v1/wecom/callback
+```
+
+### 配置检查清单
+
+部署前确认这些值都已填写：
+
+| 检查项 | 在哪配 | 说明 |
+|--------|--------|------|
+| ✅ DASHSCOPE_API_KEY | .env | 千问API Key |
+| ✅ SENIVERSE_API_KEY | .env | 心知天气私钥 |
+| ✅ ADMIN_PASSWORD | .env | 管理后台密码 |
+| ✅ wecom.corp_id | production.yaml | 企业ID |
+| ✅ wecom.secret | production.yaml | 应用Secret |
+| ✅ wecom.token | production.yaml | 回调Token |
+| ✅ wecom.encoding_aes_key | production.yaml | 回调加密Key |
+| ✅ wecom.service_userid | production.yaml | 你的企微账号 |
+| ✅ HTTPS | Nginx+Certbot | 企业微信要求 |
 
 ## 🔌 微信接入（企业微信"客户联系" — 零风险 + 无限制主动推送）
 

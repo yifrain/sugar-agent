@@ -153,25 +153,37 @@ async def get_messages(
     request: Request,
     date: Optional[str] = None,
     search: Optional[str] = None,
+    role: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     _=Depends(verify_admin),
 ):
-    """Get conversation messages with optional filters."""
+    """获取对话记录，支持筛选和分页。"""
     engine = request.app.state.engine
 
     try:
         from sugar_agent.db.models import Message
-        from sqlalchemy import or_
 
         async with AsyncSession(engine) as session:
-            stmt = select(Message).order_by(desc(Message.created_at))
-
+            # 基础查询条件
+            conditions = []
             if date:
-                stmt = stmt.where(func.date(Message.created_at) == date)
+                conditions.append(func.date(Message.created_at) == date)
             if search:
-                stmt = stmt.where(Message.content.contains(search))
+                conditions.append(Message.content.contains(search))
+            if role:
+                conditions.append(Message.role == role)
 
+            # 总数查询
+            count_stmt = select(func.count()).select_from(Message)
+            if conditions:
+                count_stmt = count_stmt.where(*conditions)
+            total = (await session.execute(count_stmt)).scalar() or 0
+
+            # 数据查询
+            stmt = select(Message).order_by(desc(Message.created_at))
+            if conditions:
+                stmt = stmt.where(*conditions)
             stmt = stmt.limit(limit).offset(offset)
             result = await session.execute(stmt)
             msgs = result.scalars().all()
@@ -187,7 +199,7 @@ async def get_messages(
                     "is_proactive": m.is_proactive,
                     "created_at": m.created_at.isoformat() if m.created_at else None,
                 } for m in msgs],
-                "total": len(msgs),
+                "total": total,
             }
 
     except Exception as e:

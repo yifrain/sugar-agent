@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  sugar-agent:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data          # 持久化数据库、日志、记忆
+      - ./config:/app/config       # 配置文件
+      - ./src/sugar_agent/prompts:/app/src/sugar_agent/prompts  # 提示词
+    env_file:
+      - .env
+    restart: unless-stopped
