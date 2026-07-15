@@ -525,27 +525,27 @@ async def trigger_task(task_id: str, request: Request, _=Depends(verify_admin)):
     return result
 
 
+class TaskUpdatePayload(BaseModel):
+    enabled: Optional[bool] = None
+    cron_hour: Optional[int] = None
+    cron_minute: Optional[int] = None
+
+
 @router.put("/scheduler/{task_id}")
 async def update_task(
     task_id: str,
+    payload: TaskUpdatePayload,
     request: Request,
-    enabled: Optional[bool] = None,
-    cron_hour: Optional[int] = None,
-    cron_minute: Optional[int] = None,
     _=Depends(verify_admin),
 ):
-    """更新定时任务配置。"""
+    """更新定时任务配置。接收 JSON body。"""
     scheduler = request.app.state.scheduler
     if not scheduler:
         raise HTTPException(status_code=503, detail="Scheduler not available")
 
-    kwargs = {}
-    if enabled is not None:
-        kwargs["enabled"] = enabled
-    if cron_hour is not None:
-        kwargs["cron_hour"] = cron_hour
-    if cron_minute is not None:
-        kwargs["cron_minute"] = cron_minute
+    kwargs = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if not kwargs:
+        return {"status": "ok", "message": "nothing to update"}
 
     result = await scheduler.update_task(task_id, **kwargs)
     return result
