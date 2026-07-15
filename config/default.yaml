@@ -81,7 +81,7 @@ schedule:
       cron_hour: 21
       cron_minute: 0
     weekly_health:
-      enabled: true
+      enabled: false
       cron_day: 0  # Sunday
       cron_hour: 10
       cron_minute: 0
