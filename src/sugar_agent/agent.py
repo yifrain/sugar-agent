@@ -318,7 +318,7 @@ class Agent:
                     "高温": f"{f.temperature_high}°C",
                     "低温": f"{f.temperature_low}°C",
                     "降雨概率": f"{f.rain_probability}%",
-                    "风力": f"{f.wind_speed}级",
+                    "风力": f.wind_scale if f.wind_scale else f"{f.wind_speed}km/h",
                 })
             return {"location": location or self.weather.location, "forecast": result}
         return {"error": "天气服务未配置"}

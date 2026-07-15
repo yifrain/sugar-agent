@@ -22,10 +22,11 @@ class WeatherForecast:
     temperature_low: float
     condition: str  # e.g. "晴", "多云", "雨"
     humidity: int
-    wind_speed: float
+    wind_speed: float   # km/h
+    wind_scale: str = ""  # 风力等级，如"4级"
     wind_direction: str = ""
     rain_probability: int = 0  # 0-100
-    suggestion: Optional[str] = None  # e.g. "适合户外活动"
+    suggestion: Optional[str] = None
 
 
 class WeatherService:
@@ -101,6 +102,7 @@ class WeatherService:
                         condition=day_data.get("text_day", "未知"),
                         humidity=int(day_data.get("humidity", 0)),
                         wind_speed=float(day_data.get("wind_speed", 0)),
+                        wind_scale=f"{day_data.get('wind_scale', '')}级" if day_data.get("wind_scale") else "",
                         wind_direction=day_data.get("wind_direction", ""),
                         rain_probability=int(day_data.get("rain_probability", 0)),
                     )
