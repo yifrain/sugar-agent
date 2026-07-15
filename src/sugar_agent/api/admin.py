@@ -19,7 +19,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from loguru import logger
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func, desc, text
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sugar_agent.config import PROMPTS_DIR
@@ -101,36 +101,26 @@ async def get_dashboard(request: Request, _=Depends(verify_admin)):
     stats = DashboardStats()
 
     try:
+        from sugar_agent.db.models import Message, BloodGlucose, Memory
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = today_start - timedelta(days=7)
 
         async with AsyncSession(engine) as session:
-            # Messages today
-            result = await session.execute(
-                select(func.count()).select_from(text("messages"))
-                .where(text("created_at >= :start")).params(start=today_start.isoformat())
-            )
-            stats.messages_today = result.scalar() or 0
+            stats.messages_today = (await session.execute(
+                select(func.count()).select_from(Message).where(Message.created_at >= today_start)
+            )).scalar() or 0
 
-            # BG readings today
-            result = await session.execute(
-                select(func.count()).select_from(text("blood_glucose"))
-                .where(text("created_at >= :start")).params(start=today_start.isoformat())
-            )
-            stats.bg_readings_today = result.scalar() or 0
+            stats.bg_readings_today = (await session.execute(
+                select(func.count()).select_from(BloodGlucose).where(BloodGlucose.created_at >= today_start)
+            )).scalar() or 0
 
-            # BG readings this week
-            result = await session.execute(
-                select(func.count()).select_from(text("blood_glucose"))
-                .where(text("created_at >= :start")).params(start=week_start.isoformat())
-            )
-            stats.bg_readings_week = result.scalar() or 0
+            stats.bg_readings_week = (await session.execute(
+                select(func.count()).select_from(BloodGlucose).where(BloodGlucose.created_at >= week_start)
+            )).scalar() or 0
 
-            # Total memories
-            result = await session.execute(
-                select(func.count()).select_from(text("memories"))
-            )
-            stats.total_memories = result.scalar() or 0
+            stats.total_memories = (await session.execute(
+                select(func.count()).select_from(Memory)
+            )).scalar() or 0
 
     except Exception as e:
         logger.error(f"Dashboard query error: {e}")
@@ -171,44 +161,34 @@ async def get_messages(
     engine = request.app.state.engine
 
     try:
-        async with AsyncSession(engine) as session:
-            query = "SELECT id, from_user, from_name, role, content, tool_calls, is_proactive, created_at FROM messages"
+        from sugar_agent.db.models import Message
+        from sqlalchemy import or_
 
-            conditions = []
-            params = {}
+        async with AsyncSession(engine) as session:
+            stmt = select(Message).order_by(desc(Message.created_at))
 
             if date:
-                conditions.append("DATE(created_at) = :date")
-                params["date"] = date
-
+                stmt = stmt.where(func.date(Message.created_at) == date)
             if search:
-                conditions.append("content LIKE :search")
-                params["search"] = f"%{search}%"
+                stmt = stmt.where(Message.content.contains(search))
 
-            if conditions:
-                query += " WHERE " + " AND ".join(conditions)
+            stmt = stmt.limit(limit).offset(offset)
+            result = await session.execute(stmt)
+            msgs = result.scalars().all()
 
-            query += " ORDER BY created_at DESC LIMIT :limit OFFSET :offset"
-            params["limit"] = limit
-            params["offset"] = offset
-
-            result = await session.execute(text(query), params)
-            rows = result.fetchall()
-
-            messages = []
-            for row in rows:
-                messages.append({
-                    "id": row[0],
-                    "from_user": row[1],
-                    "from_name": row[2],
-                    "role": row[3],
-                    "content": row[4],
-                    "tool_calls": row[5],
-                    "is_proactive": row[6],
-                    "created_at": row[7].isoformat() if row[7] else None,
-                })
-
-            return {"messages": messages, "total": len(messages)}
+            return {
+                "messages": [{
+                    "id": m.id,
+                    "from_user": m.from_user,
+                    "from_name": m.from_name,
+                    "role": m.role,
+                    "content": m.content,
+                    "tool_calls": m.tool_calls,
+                    "is_proactive": m.is_proactive,
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
+                } for m in msgs],
+                "total": len(msgs),
+            }
 
     except Exception as e:
         logger.error(f"Messages query error: {e}")
@@ -423,33 +403,28 @@ async def get_blood_glucose(
     engine = request.app.state.engine
 
     try:
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        from sugar_agent.db.models import BloodGlucose
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         async with AsyncSession(engine) as session:
-            query_str = "SELECT id, value_mmol, context, notes, recorded_at, created_at FROM blood_glucose WHERE created_at >= :cutoff"
-            params = {"cutoff": cutoff, "limit": limit}
-
+            stmt = select(BloodGlucose).where(BloodGlucose.created_at >= cutoff)
             if context:
-                query_str += " AND context = :context"
-                params["context"] = context
+                stmt = stmt.where(BloodGlucose.context == context)
+            stmt = stmt.order_by(desc(BloodGlucose.recorded_at)).limit(limit)
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
 
-            query_str += " ORDER BY recorded_at DESC LIMIT :limit"
-
-            result = await session.execute(text(query_str), params)
-            rows = result.fetchall()
-
-            readings = []
-            for row in rows:
-                readings.append({
-                    "id": row[0],
-                    "value_mmol": row[1],
-                    "context": row[2],
-                    "notes": row[3],
-                    "recorded_at": row[4].isoformat() if row[4] else None,
-                    "created_at": row[5].isoformat() if row[5] else None,
-                })
-
-            return {"readings": readings, "total": len(readings)}
+            return {
+                "readings": [{
+                    "id": r.id,
+                    "value_mmol": r.value_mmol,
+                    "context": r.context,
+                    "notes": r.notes,
+                    "recorded_at": r.recorded_at.isoformat() if r.recorded_at else None,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                } for r in rows],
+                "total": len(rows),
+            }
 
     except Exception as e:
         logger.error(f"BG query error: {e}")
