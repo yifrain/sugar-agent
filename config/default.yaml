@@ -32,11 +32,11 @@ wecom:
   service_userid: ""        # 接待人员UserID（你自己的账号ID，如 "YifanLi"）
 
 llm:
-  provider: qwen                     # deepseek | qwen | anthropic
-  model: qwen/qwen-plus              # qwen-plus支持图片识别
+  provider: dashscope                # deepseek | dashscope | anthropic
+  model: dashscope/qwen-plus         # 千问Plus，支持图片识别
   temperature: 0.8
   max_tokens: 1024
-  timeout: 30
+  timeout: 60
   fallback:
     provider: deepseek
     model: deepseek/deepseek-chat

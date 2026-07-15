@@ -80,13 +80,12 @@ class LLMClient:
 
     def _configure_api_keys(self):
         """Ensure API keys are available for configured providers."""
-        # DeepSeek
-        if "deepseek" in self.primary_model.lower() and not os.environ.get("DEEPSEEK_API_KEY"):
-            logger.warning("DEEPSEEK_API_KEY not set in environment")
-
-        # Qwen / DashScope
-        if "qwen" in self.fallback_model.lower() and not os.environ.get("DASHSCOPE_API_KEY"):
+        # DashScope (千问)
+        if "dashscope" in self.primary_model.lower() and not os.environ.get("DASHSCOPE_API_KEY"):
             logger.warning("DASHSCOPE_API_KEY not set in environment")
+        # DeepSeek
+        if "deepseek" in (self.primary_model + self.fallback_model).lower() and not os.environ.get("DEEPSEEK_API_KEY"):
+            logger.warning("DEEPSEEK_API_KEY not set in environment")
 
     async def chat(
         self,
