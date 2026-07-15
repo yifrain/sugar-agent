@@ -32,6 +32,16 @@ document.addEventListener('alpine:init', () => {
         convSearch: '',
         convDate: '',
         quickMessage: '',
+        quickSending: false,
+        quickReply: '',
+
+        // === Toast ===
+        toast: { show: false, message: '', type: 'success' },
+
+        showToast(message, type = 'success') {
+            this.toast = { show: true, message, type };
+            setTimeout(() => { this.toast.show = false; }, 3000);
+        },
 
         // === Chat Test ===
         chatHistory: [],
@@ -171,13 +181,20 @@ document.addEventListener('alpine:init', () => {
         },
 
         async sendQuickMessage() {
-            if (!this.quickMessage.trim()) return;
+            const content = this.quickMessage.trim();
+            if (!content || this.quickSending) return;
+            this.quickSending = true;
+            this.quickReply = '';
             try {
-                await api.sendMessage(this.quickMessage);
+                const result = await api.chat(content);
+                this.quickReply = result.reply || '(无回复)';
                 this.quickMessage = '';
-                alert('消息已发送');
+                // Refresh the conversation list
+                setTimeout(() => this.loadConversations(), 500);
             } catch (e) {
-                alert('发送失败: ' + e.message);
+                this.showToast('发送失败: ' + e.message, 'error');
+            } finally {
+                this.quickSending = false;
             }
         },
 
@@ -223,7 +240,7 @@ document.addEventListener('alpine:init', () => {
                 this.showMemoryForm = false;
                 await this.loadMemories();
             } catch (e) {
-                alert('创建失败: ' + e.message);
+                this.showToast('创建失败: ' + e.message, 'error');
             }
         },
 
@@ -232,7 +249,7 @@ document.addEventListener('alpine:init', () => {
                 await api.updateMemory(mem.id, { is_pinned: !mem.is_pinned });
                 await this.loadMemories();
             } catch (e) {
-                alert('操作失败: ' + e.message);
+                this.showToast('操作失败: ' + e.message, 'error');
             }
         },
 
@@ -242,7 +259,7 @@ document.addEventListener('alpine:init', () => {
                 await api.deleteMemory(id);
                 await this.loadMemories();
             } catch (e) {
-                alert('删除失败: ' + e.message);
+                this.showToast('删除失败: ' + e.message, 'error');
             }
         },
 
@@ -272,9 +289,9 @@ document.addEventListener('alpine:init', () => {
         async savePrompt() {
             try {
                 await api.updatePrompt(this.selectedPrompt, this.promptContent);
-                alert('提示词已保存！备份文件已创建。');
+                this.showToast('提示词已保存！备份文件已创建 ✅');
             } catch (e) {
-                alert('保存失败: ' + e.message);
+                this.showToast('保存失败: ' + e.message, 'error');
             }
         },
 
@@ -363,7 +380,7 @@ document.addEventListener('alpine:init', () => {
                 this.newBg = { value_mmol: '', context: '', notes: '' };
                 await this.loadBloodSugar();
             } catch (e) {
-                alert('添加失败: ' + e.message);
+                this.showToast('添加失败: ' + e.message, 'error');
             }
         },
 
@@ -373,7 +390,7 @@ document.addEventListener('alpine:init', () => {
                 await api.deleteBloodGlucose(id);
                 await this.loadBloodSugar();
             } catch (e) {
-                alert('删除失败: ' + e.message);
+                this.showToast('删除失败: ' + e.message, 'error');
             }
         },
 
@@ -399,9 +416,9 @@ document.addEventListener('alpine:init', () => {
         async triggerTask(taskId) {
             try {
                 await api.triggerTask(taskId);
-                alert(`任务 "${taskId}" 已触发！`);
+                this.showToast(`任务已触发 ✅`);
             } catch (e) {
-                alert('触发失败: ' + e.message);
+                this.showToast('触发失败: ' + e.message, 'error');
             }
         },
 
