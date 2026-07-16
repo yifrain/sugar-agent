@@ -317,6 +317,20 @@ class TaskScheduler:
 
     # === 任务 handler（preview=True 只生成不发送）===
 
+    def _get_target_users(self) -> list[str]:
+        """获取推送目标：优先用 agent 记录的真实用户，否则用配置的占位符。"""
+        if self.agent and self.agent._known_users:
+            return list(self.agent._known_users)
+        if self.agent:
+            return [self.agent.config.wechat_bridge.target_user_id]
+        return []
+
+    async def _send_to_all(self, message: str):
+        """给所有已知用户发消息。"""
+        for user_id in self._get_target_users():
+            if self.bridge:
+                await self.bridge.send_text(user_id, message)
+
     async def _weather_reminder(self, preview: bool = False):
         if not self.agent:
             return None
@@ -334,40 +348,30 @@ class TaskScheduler:
             except Exception:
                 pass
         message = await self.agent.generate_proactive("weather", weather_data)
-        if message and not preview and self.bridge:
-            target = self.agent.config.wechat_bridge.target_user_id
-            await self.bridge.send_text(target, message)
+        if message and not preview:
+            await self._send_to_all(message)
         return message
 
     async def _afternoon_checkin(self, preview: bool = False):
         if not self.agent:
             return None
         message = await self.agent.generate_proactive("checkin", {})
-        if message and not preview and self.bridge:
-            target = self.agent.config.wechat_bridge.target_user_id
-            await self.bridge.send_text(target, message)
+        if message and not preview:
+            await self._send_to_all(message)
         return message
 
     async def _evening_summary(self, preview: bool = False):
         if not self.agent:
             return None
         message = await self.agent.generate_proactive("summary", {})
-        if message and not preview and self.bridge:
-            target = self.agent.config.wechat_bridge.target_user_id
-            await self.bridge.send_text(target, message)
+        if message and not preview:
+            await self._send_to_all(message)
         return message
 
     async def _weekly_health(self, preview: bool = False):
         if not self.agent:
             return None
-        bg_context = {}
-        if self.agent:
-            readings = await self.agent._get_recent_bg_readings(days=7)
-            if readings:
-                report = self.agent.bg_analyzer.analyze_trend(readings, days=7)
-                bg_context = report.model_dump()
-        message = await self.agent.generate_proactive("health", bg_context)
-        if message and not preview and self.bridge:
-            target = self.agent.config.wechat_bridge.target_user_id
-            await self.bridge.send_text(target, message)
+        message = await self.agent.generate_proactive("health", {})
+        if message and not preview:
+            await self._send_to_all(message)
         return message

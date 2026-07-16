@@ -51,13 +51,14 @@ class Agent:
             urgent_high=config.health.urgent_high,
         )
 
-        # Conversation context tracker
-        self.context = ConversationContext()
+        # 每个用户独立的对话上下文（隔离 session）
+        self._contexts: dict[str, ConversationContext] = {}
+        # 记录所有聊过天的 external_userid（用于定时任务推送）
+        self._known_users: set[str] = set()
 
         # Load system prompt
         self.system_prompt = self._load_system_prompt()
 
-        # Track usage
         self.daily_tokens = 0
         self.messages_processed = 0
 
@@ -85,6 +86,14 @@ class Agent:
         msg_type = getattr(payload, "message_type", "text")
         image_url = getattr(payload, "image_url", "")
 
+        # 记录用户（用于定时任务推送）
+        self._known_users.add(from_user)
+
+        # 每个用户独立的上下文
+        if from_user not in self._contexts:
+            self._contexts[from_user] = ConversationContext()
+        ctx = self._contexts[from_user]
+
         self.messages_processed += 1
         logger.info(f"Agent processing #{self.messages_processed} [{msg_type}] from {from_name}")
 
@@ -97,11 +106,11 @@ class Agent:
 
         # 2. 消息入库 + 加入对话历史
         db_content = content if msg_type == "text" else f"[图片] {content}"
-        self.context.add_message("user", db_content)
+        ctx.add_message("user", db_content)
         await self._store_message(from_user, from_name, "user", db_content)
 
-        # 3. 组装 LLM 消息（图片消息用多模态格式）
-        messages = self.context.build_messages(self.system_prompt)
+        # 3. 组装 LLM 消息
+        messages = ctx.build_messages(self.system_prompt)
 
         if msg_type == "image" and image_url:
             # 将最后一条 user 消息替换为多模态格式
@@ -118,14 +127,14 @@ class Agent:
         try:
             response_text = await self._run_llm_with_tools(messages)
 
-            self.context.add_message("assistant", response_text)
+            ctx.add_message("assistant", response_text)
             await self._store_message(from_user, from_name, "assistant", response_text)
             return response_text
 
         except Exception as e:
             logger.exception(f"LLM processing failed: {e}")
             error_response = "抱歉，我暂时有点迷糊，等下再聊好吗？🥺"
-            self.context.add_message("assistant", error_response)
+            ctx.add_message("assistant", error_response)
             return error_response
 
     async def generate_proactive(self, task_type: str, context_data: dict) -> Optional[str]:
